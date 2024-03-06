@@ -4,10 +4,10 @@ import pickle
 import time
 import os
 
-from FretSncf_grp4.Util import InstanceSheetNames
+from Util import InstanceSheetNames
 
 # Chemin d'accès du fichier contenant l'instance
-instance = "mini_instance"
+instance = "Instances/mini_instance"
 instance_file = instance + ".xlsx"
 instance_pickle_file = instance + ".pkl"
 

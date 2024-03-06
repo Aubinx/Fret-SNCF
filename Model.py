@@ -1,8 +1,8 @@
 # Modules
 from gurobipy import *
 
-from FretSncf_grp4.LectureDonnees import data_dict
-from FretSncf_grp4.Util import InstanceSheetNames, ArrivalColumnNames, DepartureColumnNames
+from LectureDonnees import data_dict
+from Util import InstanceSheetNames, ArrivalColumnNames, DepartureColumnNames
 
 # Modèle
 m = Model("Fret SNCF")
