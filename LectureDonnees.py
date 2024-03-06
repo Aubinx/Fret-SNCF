@@ -1,16 +1,18 @@
 # Modules
 import pandas as pd
 import pickle
-import time
+import time, datetime
 import os
 
-from Util import InstanceSheetNames
+from Util import *
+import Horaires
 
 # Chemin d'accès du fichier contenant l'instance
 instance = "Instances/mini_instance"
 instance_file = instance + ".xlsx"
 instance_pickle_file = instance + ".pkl"
 
+## CHARGER L'INSTANCE
 def load_instance(file_path) -> dict:
     """
     Charge l'instance du problème de la gare de fret donnée par `file_path` et crée un dictionnaire qui stocke toutes le données pertinentes
@@ -23,7 +25,49 @@ def load_instance(file_path) -> dict:
     all_dict[InstanceSheetNames.SHEET_CORRESPONDANCES] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_CORRESPONDANCES)
     all_dict[InstanceSheetNames.SHEET_TACHES] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_TACHES)
     all_dict[InstanceSheetNames.SHEET_ROULEMENTS] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_ROULEMENTS)
+    dates_to_creneaux(all_dict)
     return all_dict
+
+def get_first_day(data):
+    first_day = datetime.date.max
+    for _, row in data[InstanceSheetNames.SHEET_ARRIVEES].iterrows():
+        jour = datetime.datetime.strptime(row[ArriveesColumnNames.ARR_DATE], '%d/%m/%Y').date()
+        if jour < first_day:
+            first_day = jour
+    return first_day
+
+def dates_to_creneaux(data):
+    first_day = get_first_day(data)
+    # Create new column with default value of 0
+    data[InstanceSheetNames.SHEET_ARRIVEES]["Creneau"] = 0
+    data[InstanceSheetNames.SHEET_DEPARTS]["Creneau"] = 0
+
+    # Fill the new columns with the right value
+    for index, row in data[InstanceSheetNames.SHEET_ARRIVEES].iterrows():
+        arrival_date = row[ArriveesColumnNames.ARR_DATE]
+        if isinstance(arrival_date, str):
+            jour = datetime.datetime.strptime(arrival_date, '%d/%m/%Y').date()
+        else:
+            jour = arrival_date.date()
+        time_delta = jour - first_day
+        numero_jour = time_delta.days + 1
+        horaire = row[ArriveesColumnNames.ARR_HOUR]
+        heure, minute = horaire.hour, horaire.minute
+        creneau = Horaires.triplet_vers_entier(numero_jour, heure, minute)
+        data[InstanceSheetNames.SHEET_ARRIVEES]["Creneau"][index] = creneau
+    
+    for index, row in data[InstanceSheetNames.SHEET_DEPARTS].iterrows():
+        departure_date = row[DepartsColumnNames.DEP_DATE]
+        if isinstance(departure_date, str):
+            jour = datetime.datetime.strptime(departure_date, '%d/%m/%Y').date()
+        else:
+            jour = departure_date.date()
+        time_delta = jour - first_day
+        numero_jour = time_delta.days + 1
+        horaire = row[DepartsColumnNames.DEP_HOUR]
+        heure, minute = horaire.hour, horaire.minute
+        creneau = Horaires.triplet_vers_entier(numero_jour, heure, minute)
+        data[InstanceSheetNames.SHEET_DEPARTS]["Creneau"][index] = creneau
 
 def save_to_pickle(data, pkl_file_path):
     """
@@ -41,6 +85,8 @@ def load_from_pickle(pkl_file_path):
         print("Ce fichier n'existe pas")
         return None
 
+
+
 data_dict = None
 if not os.path.isfile(instance_pickle_file):
     start_time = time.time()
@@ -51,5 +97,56 @@ if not os.path.isfile(instance_pickle_file):
 else:
     data_dict = load_from_pickle(instance_pickle_file)
 
+## FONCTIONS UTILES POUR LA LECTURE DE DONNEES
+def composition_train_depart(data, id_train_depart):
+    """
+    argument : `id_train_depart` est l'identifiant unique du train de départ considéré
+    returns : `related_trains` la liste des trains à l'arrivées qui contiennent un wagon qui est nécessaire pour le train au départ considéré
+    """
+    related_trains = []
+    correspondances = data[InstanceSheetNames.SHEET_CORRESPONDANCES]
+    for index, row in correspondances.iterrows():
+        print(row)
+        dep_train_id = (row[CorrespondancesColumnNames.CORR_DEP_DATE], row[CorrespondancesColumnNames.CORR_DEP_TRAIN_NUMBER])
+        if dep_train_id == id_train_depart:
+            arr_train_id = (row[CorrespondancesColumnNames.CORR_ARR_DATE], row[CorrespondancesColumnNames.CORR_ARR_TRAIN_NUMBER])
+            related_trains.append(arr_train_id)
+    return related_trains
+
+
+
+
+def indispo_machine_to_intervalle(data, machine):
+    machine_data = data[InstanceSheetNames.SHEET_MACHINES]
+    for index, row in machine_data.iterrows():
+        if row[MachinesColumnNames.MACHINE_NAME] == machine:
+            total_indisp = row[MachinesColumnNames.MACHINE_INDISPONIBILITES]
+            list_indisp = total_indisp.split(sep=";")
+            for indisp in list_indisp:
+                indisp = indisp.lstrip("(")
+                indisp = indisp.rstrip(")")
+                day_number, time_span = indisp.split(",")
+                time_start, time_end = time_span.split("-")
+                print(day_number, time_start, time_end)
+                if time_start == time_end:
+                    
+                    pass
+    return None
+
+def indispo_chantier_to_intervalle(data, chantier):
+    
+    chantier_data = data[InstanceSheetNames.SHEET_CHANTIERS]
+    for index, row in chantier_data.iterrows():
+        if row[ChantiersColumnNames.CHANTIER_NAME] == chantier:
+            indisp = row[ChantiersColumnNames.CHANTIER_INDISPONIBILITES]
+            print(indisp)
+
+    return None
+
 if __name__ == "__main__":
     print(data_dict.keys())
+    print("===========")
+    print(indispo_machine_to_intervalle(data_dict, "FOR"))
+    print("===========")
+    print(data_dict[InstanceSheetNames.SHEET_ARRIVEES]["Creneau"])
+
