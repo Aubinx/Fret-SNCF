@@ -1,9 +1,9 @@
 def triplet_vers_entier(jour, heure, minute):
     '''
     Convertit un triplet de la forme (jour, heure, minute) en un entier positif avec :
-        "jour" un entier supérieur ou égal à 1. Par convention, on choisit le jour 1 comme le lundi de la première semaine.
-        "heure" un entier compris entre 0 et 23.
-        "minute" un entier multiple de 5 compris entre 0 et 55.
+        `jour` un entier supérieur ou égal à 1. Par convention, on choisit le jour 1 comme le lundi de la première semaine.
+        `heure` un entier compris entre 0 et 23.
+        `minute` un entier multiple de 5 compris entre 0 et 55.
     Tout multiple de 5 minutes correspond à un entier positif, par ordre chronologique.
     Par convention, l'entier 0 correspond au lundi du jour 1 à 00h00, c'est-à-dire au triplet (1, 0, 0)
     '''
