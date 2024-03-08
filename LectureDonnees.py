@@ -3,6 +3,7 @@ import pandas as pd
 import pickle
 import time, datetime
 import os
+import re
 
 from Util import *
 import Horaires
@@ -12,19 +13,24 @@ instance = "Instances/mini_instance"
 instance_file = instance + ".xlsx"
 instance_pickle_file = instance + ".pkl"
 
+# Expressions régulières pour les différents formats de jours
+re_jour = re.compile('\d{2}/\d{2}/\d{4}')
+re_jourheure = re.compile('\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}')
+
 ## CHARGER L'INSTANCE
 def load_instance(file_path) -> dict:
     """
     Charge l'instance du problème de la gare de fret donnée par `file_path` et crée un dictionnaire qui stocke toutes le données pertinentes
     """
     all_dict = dict()
-    all_dict[InstanceSheetNames.SHEET_CHANTIERS] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_CHANTIERS)
-    all_dict[InstanceSheetNames.SHEET_MACHINES] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_MACHINES)
-    all_dict[InstanceSheetNames.SHEET_ARRIVEES] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_ARRIVEES)
-    all_dict[InstanceSheetNames.SHEET_DEPARTS] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_DEPARTS)
-    all_dict[InstanceSheetNames.SHEET_CORRESPONDANCES] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_CORRESPONDANCES)
-    all_dict[InstanceSheetNames.SHEET_TACHES] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_TACHES)
-    all_dict[InstanceSheetNames.SHEET_ROULEMENTS] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_ROULEMENTS)
+    all_dict[InstanceSheetNames.SHEET_CHANTIERS] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_CHANTIERS, dtype=str)
+    all_dict[InstanceSheetNames.SHEET_MACHINES] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_MACHINES, dtype=str)
+    all_dict[InstanceSheetNames.SHEET_ARRIVEES] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_ARRIVEES, dtype=str)
+    all_dict[InstanceSheetNames.SHEET_DEPARTS] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_DEPARTS, dtype=str)
+    all_dict[InstanceSheetNames.SHEET_CORRESPONDANCES] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_CORRESPONDANCES, dtype=str)
+    all_dict[InstanceSheetNames.SHEET_TACHES] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_TACHES, dtype=str)
+    all_dict[InstanceSheetNames.SHEET_ROULEMENTS] = pd.read_excel(file_path, sheet_name=InstanceSheetNames.SHEET_ROULEMENTS, dtype=str)
+    set_date_to_standard(all_dict)
     dates_to_creneaux(all_dict)
     return all_dict
 
@@ -41,6 +47,34 @@ def get_first_day(data):
             first_day = jour
     return first_day
 
+def set_date_to_standard(data):
+    """
+    Transforme toutes les dates présentes dans l'instance `data` au format `jj/mm/aaaa`
+    """
+    for index, row in data[InstanceSheetNames.SHEET_ARRIVEES].iterrows():
+        arrival_date = row[ArriveesColumnNames.ARR_DATE]
+        if re_jourheure.match(arrival_date) != None:
+            jour = datetime.datetime.strptime(arrival_date, '%Y-%m-%d %H:%M:%S').date()
+            std_date = datetime.datetime.strftime(jour, '%d/%m/%Y')
+            data[InstanceSheetNames.SHEET_ARRIVEES][ArriveesColumnNames.ARR_DATE][index] = std_date
+    for index, row in data[InstanceSheetNames.SHEET_DEPARTS].iterrows():
+        departure_date = row[DepartsColumnNames.DEP_DATE]
+        if re_jourheure.match(departure_date) != None:
+            jour = datetime.datetime.strptime(departure_date, '%Y-%m-%d %H:%M:%S').date()
+            std_date = datetime.datetime.strftime(jour, '%d/%m/%Y')
+            data[InstanceSheetNames.SHEET_DEPARTS][DepartsColumnNames.DEP_DATE][index] = std_date
+    for index, row in data[InstanceSheetNames.SHEET_CORRESPONDANCES].iterrows():
+        departure_date = row[CorrespondancesColumnNames.CORR_DEP_DATE]
+        if re_jourheure.match(departure_date) != None:
+            jour = datetime.datetime.strptime(departure_date, '%Y-%m-%d %H:%M:%S').date()
+            std_date = datetime.datetime.strftime(jour, '%d/%m/%Y')
+            data[InstanceSheetNames.SHEET_CORRESPONDANCES][CorrespondancesColumnNames.CORR_DEP_DATE][index] = std_date
+        arrival_date = row[CorrespondancesColumnNames.CORR_ARR_DATE]
+        if re_jourheure.match(arrival_date) != None:
+            jour = datetime.datetime.strptime(arrival_date, '%Y-%m-%d %H:%M:%S').date()
+            std_date = datetime.datetime.strftime(jour, '%d/%m/%Y')
+            data[InstanceSheetNames.SHEET_CORRESPONDANCES][CorrespondancesColumnNames.CORR_ARR_DATE][index] = std_date
+    
 def dates_to_creneaux(data):
     """
     Parcourt les données de l'instance et ajoute une colonne "Creneau" 
@@ -55,26 +89,32 @@ def dates_to_creneaux(data):
     # Fill the new columns with the right value
     for index, row in data[InstanceSheetNames.SHEET_ARRIVEES].iterrows():
         arrival_date = row[ArriveesColumnNames.ARR_DATE]
-        if isinstance(arrival_date, str):
+        if re_jour.match(arrival_date) != None:
             jour = datetime.datetime.strptime(arrival_date, '%d/%m/%Y').date()
+        elif re_jourheure.match(arrival_date) != None:
+            jour = datetime.datetime.strptime(arrival_date, '%Y-%m-%d %H:%M:%S').date()
         else:
             jour = arrival_date.date()
         time_delta = jour - first_day
         numero_jour = time_delta.days + 1
-        horaire = row[ArriveesColumnNames.ARR_HOUR]
+        time_str = row[ArriveesColumnNames.ARR_HOUR]
+        horaire = datetime.datetime.strptime(time_str, '%H:%M:%S').time()
         heure, minute = horaire.hour, horaire.minute
         creneau = Horaires.triplet_vers_entier(numero_jour, heure, minute)
         data[InstanceSheetNames.SHEET_ARRIVEES]["Creneau"][index] = creneau
     
     for index, row in data[InstanceSheetNames.SHEET_DEPARTS].iterrows():
         departure_date = row[DepartsColumnNames.DEP_DATE]
-        if isinstance(departure_date, str):
+        if re_jour.match(departure_date) != None:
             jour = datetime.datetime.strptime(departure_date, '%d/%m/%Y').date()
+        elif re_jourheure.match(departure_date) != None:
+            jour = datetime.datetime.strptime(departure_date, '%Y-%m-%d %H:%M:%S').date()
         else:
             jour = departure_date.date()
         time_delta = jour - first_day
         numero_jour = time_delta.days + 1
-        horaire = row[DepartsColumnNames.DEP_HOUR]
+        time_str = row[DepartsColumnNames.DEP_HOUR]
+        horaire = datetime.datetime.strptime(time_str, '%H:%M:%S').time()
         heure, minute = horaire.hour, horaire.minute
         creneau = Horaires.triplet_vers_entier(numero_jour, heure, minute)
         data[InstanceSheetNames.SHEET_DEPARTS]["Creneau"][index] = creneau
@@ -109,13 +149,12 @@ else:
 ## FONCTIONS UTILES POUR LA LECTURE DE DONNEES
 def composition_train_depart(data, id_train_depart):
     """
-    argument : `id_train_depart` est l'identifiant unique du train de départ considéré
+    argument : `id_train_depart` est l'identifiant unique du train de départ considéré sous la frome du couple (`date`, `numero de train`)
     returns : `related_trains` la liste des trains à l'arrivées qui contiennent un wagon faisant partie du train au départ considéré
     """
     related_trains = []
     correspondances = data[InstanceSheetNames.SHEET_CORRESPONDANCES]
     for index, row in correspondances.iterrows():
-        print(row)
         dep_train_id = (row[CorrespondancesColumnNames.CORR_DEP_DATE], row[CorrespondancesColumnNames.CORR_DEP_TRAIN_NUMBER])
         if dep_train_id == id_train_depart:
             arr_train_id = (row[CorrespondancesColumnNames.CORR_ARR_DATE], row[CorrespondancesColumnNames.CORR_ARR_TRAIN_NUMBER])
@@ -162,5 +201,11 @@ if __name__ == "__main__":
     print("===========")
     print(indispo_machine_to_intervalle(data_dict, "FOR"))
     print("===========")
-    print(data_dict[InstanceSheetNames.SHEET_ARRIVEES]["Creneau"])
+    departs = data_dict[InstanceSheetNames.SHEET_DEPARTS]
+    for index in departs.index :
+        jour = departs[DepartsColumnNames.DEP_DATE][index]
+        numero = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+        id_train_depart = (jour, numero)
+        trains_arrivee_lies = composition_train_depart(data_dict, id_train_depart)
+        print(trains_arrivee_lies)
 
