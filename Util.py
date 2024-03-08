@@ -39,3 +39,11 @@ class CorrespondancesColumnNames:
     CORR_ARR_TRAIN_NUMBER = "n°Train arrivee"
     CORR_DEP_DATE = "Jour depart"
     CORR_DEP_TRAIN_NUMBER = "n°Train depart"
+
+class TachesColumnNames:
+    TASK_TYPE_TRAIN = "Type de train"
+    TASK_TYPE_HUMAN = "Type de tache humaine"
+    TASK_LINK = "Lien machine"
+    TASK_DURATION = "Durée"
+    TASK_CHANTIER = "Chantier"
+    TASK_ORDRE = "Ordre"
