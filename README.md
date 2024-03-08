@@ -1,4 +1,4 @@
-# Projet : Gare de triage de fret SCNF - Trenitalia, groupe 4
+# Projet triage fret gare SCNF Trenitalia groupe 4
 
 Bienvenue dans ce répôt Git ! :grinning:
 
@@ -12,6 +12,6 @@ Ensuite il y a plusieurs fichiers :
 - LectureDonnees.py qui permet de récupérer toutes les donnés utiles à partir des fichiers du dossier Instances : par exemple les informations sur les trains d'arrivées et de départ et les indisponibilités des machines.
 - Model.py : c'est le fichier qu'il faut lancer pour faire tourner le modèle d'optimisation implémenté.
 - Util.py : un fichier utilitaire regroupant différentes classes.
-- et enfin, ce Readme.:wink:
+- et enfin, ce Readme. :wink:
 
-Bon voyage dans ce répôt Git !:roller_coaster::runner:
+Bon voyage dans ce répôt Git ! :roller_coaster: :runner:
