@@ -1,6 +1,6 @@
-# FretSncf_grp4
+# Projet : Gare de triage de fret SCNF - Trenitalia, groupe 4
 
-Bienvenue dans ce répôt Git !  	:grinning:
+Bienvenue dans ce répôt Git ! :grinning:
 
 Dans ce projet, nous cherchons à modéliser la gestion d'une gare de triage fret. :steam_locomotive: Nous utilisons les données de la gare de Woippy, la plus grande gare de triage en France :fr:, à la frontière avec le Luxembourg et l'Allemagne. Mais le principe est le même quelque soit la gare de triage considérée.
 
