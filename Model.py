@@ -11,6 +11,8 @@ m = Model("Fret SNCF")
 ## VARIABLES
 vars = {}
 
+M = 10**10
+
 # Variables de décision concernant les trains à l'arrivée :
 arrivees = data_dict[InstanceSheetNames.SHEET_ARRIVEES]
 for index in arrivees.index:
@@ -72,7 +74,6 @@ for index in departs.index :
 '''À faire quand tout le reste fonctionne'''
 
 # Contraintes de raccordement
-
 for index in departs.index :
     jour_depart = departs[DepartsColumnNames.DEP_DATE][index]
     numero_depart = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
@@ -83,6 +84,133 @@ for index in departs.index :
         contr[f"Train_RAC_{jour_arrivee}_{numero_arrivee}_{jour_depart}_{numero_depart}"] = m.addConstr(
             vars[f"Train_DEP_{jour_depart}_{numero_depart}_FOR"] >= vars[f"Train_ARR_{jour_arrivee}_{numero_arrivee}_DEB"] + 3,
             name = f"Train_RAC_{jour_arrivee}_{numero_arrivee}_{jour_depart}_{numero_depart}"
+        )
+
+# Contraintes d'occupation des machines
+for i in range(len(arrivees.index)):
+    for j in range(i + 1, len(arrivees.index)):
+        index_1 = arrivees.index[i]
+        index_2 = arrivees.index[j]
+        jour_1 = arrivees[ArriveesColumnNames.ARR_DATE][index_1]
+        numero_1 = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_1]
+        jour_2 = arrivees[ArriveesColumnNames.ARR_DATE][index_2]
+        numero_2 = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_2]
+        vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = m.addVar(
+            name = f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB",
+            vtype = GRB.BINARY,
+        )
+        vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = m.addVar(
+            name = f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB",
+            vtype = GRB.INTEGER,
+            lb = 0
+        )
+        contr[f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = m.addConstr(
+            M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] >= vars[f"Train_ARR_{jour_2}_{numero_2}_DEB"] - vars[f"Train_ARR_{jour_1}_{numero_1}_DEB"],
+            name = f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
+        )
+        contr[f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = m.addConstr(
+            M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] - M <= vars[f"Train_ARR_{jour_2}_{numero_2}_DEB"] - vars[f"Train_ARR_{jour_1}_{numero_1}_DEB"],
+            name = f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
+        )
+        contr[f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = m.addConstr(
+            vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] <= vars[f"Train_ARR_{jour_2}_{numero_2}_DEB"] - vars[f"Train_ARR_{jour_1}_{numero_1}_DEB"],
+            name = f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
+        )
+        contr[f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = m.addConstr(
+            vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] <= M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"],
+            name = f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
+        )
+        contr[f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = m.addConstr(
+            vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] >= vars[f"Train_ARR_{jour_2}_{numero_2}_DEB"] - vars[f"Train_ARR_{jour_1}_{numero_1}_DEB"] - M + M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"],
+            name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
+        )
+        contr[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = m.addConstr(
+            2 * vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] - vars[f"Train_ARR_{jour_2}_{numero_2}_DEB"] + vars[f"Train_ARR_{jour_1}_{numero_1}_DEB"] >= 3,
+            name = f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
+        )
+
+for i in range(len(departs.index)):
+    for j in range(i + 1, len(departs.index)):
+        index_1 = departs.index[i]
+        index_2 = departs.index[j]
+        jour_1 = departs[DepartsColumnNames.DEP_DATE][index_1]
+        numero_1 = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
+        jour_2 = departs[DepartsColumnNames.DEP_DATE][index_2]
+        numero_2 = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
+        vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = m.addVar(
+            name = f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR",
+            vtype = GRB.BINARY,
+        )
+        vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = m.addVar(
+            name = f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR",
+            vtype = GRB.INTEGER,
+            lb = 0
+        )
+        contr[f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = m.addConstr(
+            M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] >= vars[f"Train_DEP_{jour_2}_{numero_2}_FOR"] - vars[f"Train_DEP_{jour_1}_{numero_1}_FOR"],
+            name = f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
+        )
+        contr[f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = m.addConstr(
+            M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] - M <= vars[f"Train_DEP_{jour_2}_{numero_2}_FOR"] - vars[f"Train_DEP_{jour_1}_{numero_1}_FOR"],
+            name = f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
+        )
+        contr[f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = m.addConstr(
+            vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] <= vars[f"Train_DEP_{jour_2}_{numero_2}_FOR"] - vars[f"Train_DEP_{jour_1}_{numero_1}_FOR"],
+            name = f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
+        )
+        contr[f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = m.addConstr(
+            vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] <= M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"],
+            name = f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
+        )
+        contr[f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = m.addConstr(
+            vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] >= vars[f"Train_DEP_{jour_2}_{numero_2}_FOR"] - vars[f"Train_DEP_{jour_1}_{numero_1}_FOR"] - M + M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"],
+            name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
+        )
+        contr[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = m.addConstr(
+            2 * vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] - vars[f"Train_DEP_{jour_2}_{numero_2}_FOR"] + vars[f"Train_DEP_{jour_1}_{numero_1}_FOR"] >= 3,
+            name = f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
+        )
+
+for i in range(len(departs.index)):
+    for j in range(i + 1, len(departs.index)):
+        index_1 = departs.index[i]
+        index_2 = departs.index[j]
+        jour_1 = departs[DepartsColumnNames.DEP_DATE][index_1]
+        numero_1 = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
+        jour_2 = departs[DepartsColumnNames.DEP_DATE][index_2]
+        numero_2 = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
+        vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = m.addVar(
+            name = f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG",
+            vtype = GRB.BINARY,
+        )
+        vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = m.addVar(
+            name = f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG",
+            vtype = GRB.INTEGER,
+            lb = 0
+        )
+        contr[f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = m.addConstr(
+            M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] >= vars[f"Train_DEP_{jour_2}_{numero_2}_DEG"] - vars[f"Train_DEP_{jour_1}_{numero_1}_DEG"],
+            name = f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
+        )
+        contr[f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = m.addConstr(
+            M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] - M <= vars[f"Train_DEP_{jour_2}_{numero_2}_DEG"] - vars[f"Train_DEP_{jour_1}_{numero_1}_DEG"],
+            name = f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
+        )
+        contr[f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = m.addConstr(
+            vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] <= vars[f"Train_DEP_{jour_2}_{numero_2}_DEG"] - vars[f"Train_DEP_{jour_1}_{numero_1}_DEG"],
+            name = f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
+        )
+        contr[f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = m.addConstr(
+            vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] <= M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"],
+            name = f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
+        )
+        contr[f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = m.addConstr(
+            vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] >= vars[f"Train_DEP_{jour_2}_{numero_2}_DEG"] - vars[f"Train_DEP_{jour_1}_{numero_1}_DEG"] - M + M * vars[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"],
+            name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
+        )
+        contr[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = m.addConstr(
+            2 * vars[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] - vars[f"Train_DEP_{jour_2}_{numero_2}_DEG"] + vars[f"Train_DEP_{jour_1}_{numero_1}_DEG"] >= 3,
+            name = f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
         )
 
 m.update()
