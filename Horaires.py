@@ -1,3 +1,5 @@
+"""Module pour gérer les transfromations entre créneau et date réelle"""
+
 def triplet_vers_entier(jour, heure, minute):
     '''
     Convertit un triplet de la forme (jour, heure, minute) en un entier positif avec :
@@ -10,7 +12,7 @@ def triplet_vers_entier(jour, heure, minute):
     assert isinstance(jour, int) and jour >= 1, "Le jour doit être un entier supérieur ou égal à 1"
     assert heure in range(24) , "L'heure doit être un entier compris entre 0 et 23"
     assert minute in range(0,56,5) , "La minute doit être un entier multiple de 5 compris entre 0 et 55"
-    
+
     total_minutes = (jour - 1) * 24 * 60 + heure * 60 + minute
     entier = total_minutes // 5
     return entier

@@ -1,32 +1,36 @@
+"""Génère et optimise le modèle gurobi associé à l'instance considérée"""
 # Modules
 from gurobipy import *
 
-from LectureDonnees import data_dict, composition_train_depart
-from Util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames
-import Horaires
+from lecture_donnees import DATA_DICT, composition_train_depart
+from util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames
+import horaires
 
 
 def linearise_abs(model : Model, variables, contraintes, expr_var : LinExpr, var_name : str, majorant):
     """
     linéarise la variable `|expr_var|` en ajoutant des variables et des contraintes au modèle gurobi `model` ainsi que dans les dictionnaire `variables` et `contraintes`
     Renvoie l'expression linéaire de `|expr_var|`
-    """    
+    """
     # Créer la variable binaire indicatrice et les contraintes associées
     delta = model.addVar(name=f"linabs_binary_{var_name}",
                          vtype=GRB.BINARY)
-    variables[delta.VarName] = delta
     cb1 = model.addConstr(majorant * delta >= expr_var, name=f"linabs_ConstrBinary1_{var_name}")
     cb2 = model.addConstr(majorant *( delta - 1) <= expr_var, name=f"linabs_ConstrBinary2_{var_name}")
-    contraintes[cb1.ConstrName] = cb1
-    contraintes[cb2.ConstrName] = cb2
 
     # Créer la nouvelle variable entière et les contraintes associées
     prod = model.addVar(name=f"linabs_integer_{var_name}",
                         vtype=GRB.INTEGER, lb=0)
-    variables[prod.VarName] = prod
     ci1 = model.addConstr(prod <= expr_var, name=f"linabs_ConstrInteger1_{var_name}")
     ci2 = model.addConstr(prod <= majorant * delta, name=f"linabs_ConstrInteger2_{var_name}")
     ci3 = model.addConstr(prod >= expr_var - majorant * (delta - 1), name=f"linabs_ConstrInteger3_{var_name}")
+    
+    # Mettre à jour les dictionnaires des variables et contraintes
+    model.update()
+    variables[delta.VarName] = delta
+    variables[prod.VarName] = prod
+    contraintes[cb1.ConstrName] = cb1
+    contraintes[cb2.ConstrName] = cb2
     contraintes[ci1.ConstrName] = ci1
     contraintes[ci2.ConstrName] = ci2
     contraintes[ci3.ConstrName] = ci3
@@ -42,7 +46,7 @@ VARIABLES = {}
 M = 10**10
 
 # Variables de décision concernant les trains à l'arrivée :
-arrivees = data_dict[InstanceSheetNames.SHEET_ARRIVEES]
+arrivees = DATA_DICT[InstanceSheetNames.SHEET_ARRIVEES]
 for index in arrivees.index:
     jour = arrivees[ArriveesColumnNames.ARR_DATE][index]
     numero = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
@@ -53,7 +57,7 @@ for index in arrivees.index:
     )
 
 # Variables de décision concernant les trains au départ :
-departs = data_dict[InstanceSheetNames.SHEET_DEPARTS]
+departs = DATA_DICT[InstanceSheetNames.SHEET_DEPARTS]
 for index in departs.index:
     jour = departs[DepartsColumnNames.DEP_DATE][index]
     numero = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
@@ -102,20 +106,20 @@ for index in departs.index :
 '''À faire quand tout le reste fonctionne'''
 #Test indipso machine DEB
 t_min = 0
-t_max = Horaires.triplet_vers_entier(1, 13, 0)
+t_max = horaires.triplet_vers_entier(1, 13, 0)
 delta_t = 3
 jour_test = arrivees[ArriveesColumnNames.ARR_DATE][0]
 numero_test = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][0]
 to_abs = 2 * VARIABLES[f"Train_ARR_{jour_test}_{numero_test}_DEB"] - (t_max + t_min - delta_t + 1)
-delta, prod, lin_abs, cstr_list = linearise_abs(m, VARIABLES, CONTRAINTES, to_abs, "TEST_INDISPO_Train_ARR_sillon1", M)
-m.addConstr(lin_abs >= t_max - t_min + delta_t, name="Constr_INDISPO_DEB_Train0")
+lin_abs = linearise_abs(m, VARIABLES, CONTRAINTES, to_abs, "TEST_INDISPO_Train_ARR_sillon1", M)
+CONTRAINTES["Constr_INDISPO_DEB_Train0"] = m.addConstr(lin_abs >= t_max - t_min + delta_t, name="Constr_INDISPO_DEB_Train0")
 
 # Contraintes de raccordement
 for index in departs.index :
     jour_depart = departs[DepartsColumnNames.DEP_DATE][index]
     numero_depart = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
     id_train_depart = (jour_depart, numero_depart)
-    trains_arrivee_lies = composition_train_depart(data_dict, id_train_depart)
+    trains_arrivee_lies = composition_train_depart(DATA_DICT, id_train_depart)
     for jour_arrivee, numero_arrivee in trains_arrivee_lies:
         CONTRAINTES[f"Train_RAC_{jour_arrivee}_{numero_arrivee}_{jour_depart}_{numero_depart}"] = m.addConstr(
             VARIABLES[f"Train_DEP_{jour_depart}_{numero_depart}_FOR"] >= VARIABLES[f"Train_ARR_{jour_arrivee}_{numero_arrivee}_DEB"] + 3,
@@ -249,4 +253,4 @@ m.optimize()
 
 for var in VARIABLES:
     print(f"{var}: {VARIABLES[var].x}")
-    print("triplet :", Horaires.entier_vers_triplet(int(VARIABLES[var].x)))
+    print("triplet :", horaires.entier_vers_triplet(int(VARIABLES[var].x)))

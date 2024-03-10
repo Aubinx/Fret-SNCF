@@ -1,3 +1,4 @@
+"""Module contenant des informations utiles pour extraire et traiter les données"""
 
 ORDERED_MACHINES = ["DEB", "FOR", "DEG"]
 
