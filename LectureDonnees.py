@@ -13,7 +13,7 @@ instance = "Instances/mini_instance"
 instance_file = instance + ".xlsx"
 instance_pickle_file = instance + ".pkl"
 
-# Expressions régulières pour les différents formats de jours
+# Expressions régulières pour les différents formats de jours qui apparaissent à la lecture du fichier excel par pandas
 re_jour = re.compile('\d{2}/\d{2}/\d{4}')
 re_jourheure = re.compile('\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}')
 
@@ -165,47 +165,73 @@ def composition_train_depart(data, id_train_depart):
 def indispo_machine_to_intervalle(data, machine):
     """
     Parcourt dans l'instances les indisponibiltés machines de la machine `machine`
-    Renvoie cette indisponibilité sous la forme d'une liste de couple (`debut`, `fin`) qui indiquent les créneaux de début et de fin de chaque indisponibilité
+    Renvoie ces indisponibilités sous la forme d'une liste de couple (`debut`, `fin`) qui indiquent les créneaux de début et de fin de chaque indisponibilité
     """
+    creneaux_indisp_machine = []
     machine_data = data[InstanceSheetNames.SHEET_MACHINES]
     for _, row in machine_data.iterrows():
         if row[MachinesColumnNames.MACHINE_NAME] == machine:
             total_indisp = row[MachinesColumnNames.MACHINE_INDISPONIBILITES]
+            if total_indisp == "0":
+                break
             list_indisp = total_indisp.split(sep=";")
             for indisp in list_indisp:
-                indisp = indisp.lstrip("(")
-                indisp = indisp.rstrip(")")
+                indisp = indisp.lstrip("(").rstrip(")")
                 day_number, time_span = indisp.split(",")
+                day_number = int(day_number)
                 time_start, time_end = time_span.split("-")
-                print(day_number, time_start, time_end)
+                time_start = time_start.strip(" ")
+                time_end = time_end.strip(" ")
+                start_hour, start_minute = [int(var) for var in time_start.split(":")]
+                end_hour, end_minute = [int(var) for var in time_end.split(":")]
+                creneau_start = Horaires.triplet_vers_entier(day_number, start_hour, start_minute)
+                creneau_end = Horaires.triplet_vers_entier(day_number, end_hour, end_minute)
                 if time_start == time_end:
-                    
-                    pass
-    return None
+                    creneau_end = Horaires.triplet_vers_entier(day_number+1, end_hour, end_minute)
+                    if day_number == 7:
+                        creneaux_indisp_machine.append((0, Horaires.triplet_vers_entier(1, end_hour, end_minute)))
+                creneaux_indisp_machine.append((creneau_start, creneau_end))
+    return creneaux_indisp_machine
 
 def indispo_chantier_to_intervalle(data, chantier):
     """
     Parcourt dans l'instances les indisponibiltés chantiers du chaniter `chantier`
     Renvoie cette indisponibilité sous la forme d'une liste de couple (`debut`, `fin`) qui indiquent les créneaux de début et de fin de chaque indisponibilité
     """
+    creneaux_indisp_chantier = []
     chantier_data = data[InstanceSheetNames.SHEET_CHANTIERS]
     for index, row in chantier_data.iterrows():
         if row[ChantiersColumnNames.CHANTIER_NAME] == chantier:
-            indisp = row[ChantiersColumnNames.CHANTIER_INDISPONIBILITES]
-            print(indisp)
-
-    return None
+            total_indisp = row[ChantiersColumnNames.CHANTIER_INDISPONIBILITES]
+            if total_indisp == "0":
+                break
+            list_indisp = total_indisp.split(sep=";")
+            for indisp in list_indisp:
+                indisp = indisp.lstrip("(").rstrip(")")
+                day_number, time_span = indisp.split(",")
+                day_number = int(day_number)
+                time_start, time_end = time_span.split("-")
+                time_start = time_start.strip(" ")
+                time_end = time_end.strip(" ")
+                start_hour, start_minute = [int(var) for var in time_start.split(":")]
+                end_hour, end_minute = [int(var) for var in time_end.split(":")]
+                creneau_start = Horaires.triplet_vers_entier(day_number, start_hour, start_minute)
+                creneau_end = Horaires.triplet_vers_entier(day_number, end_hour, end_minute)
+                if time_start == time_end:
+                    creneau_end = Horaires.triplet_vers_entier(day_number+1, end_hour, end_minute)
+                    if day_number == 7:
+                        creneaux_indisp_chantier.append((0, Horaires.triplet_vers_entier(1, end_hour, end_minute)))
+                creneaux_indisp_chantier.append((creneau_start, creneau_end))
+    return creneaux_indisp_chantier
 
 if __name__ == "__main__":
     print(data_dict.keys())
     print("===========")
-    print(indispo_machine_to_intervalle(data_dict, "FOR"))
+    print("Test indispo Machines/Chantiers")
+    thing = indispo_machine_to_intervalle(data_dict, "FOR")
+    print(thing)
+    for start, end in thing:
+        print("Debut : ", Horaires.entier_vers_triplet(start))
+        print("Fin : ", Horaires.entier_vers_triplet(end))
     print("===========")
-    departs = data_dict[InstanceSheetNames.SHEET_DEPARTS]
-    for index in departs.index :
-        jour = departs[DepartsColumnNames.DEP_DATE][index]
-        numero = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
-        id_train_depart = (jour, numero)
-        trains_arrivee_lies = composition_train_depart(data_dict, id_train_depart)
-        print(trains_arrivee_lies)
 
