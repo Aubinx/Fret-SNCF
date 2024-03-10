@@ -94,42 +94,40 @@ def dates_to_creneaux(data):
     qui stocke leur horaire d'arrivée sous la forme d'un créneau entier
     """
     first_day = get_first_day(data)
-    # Create new column with default value of 0
+    # Crée les nouvelles colonnes avec 0 pour valeur par défaut
     data[InstanceSheetNames.SHEET_ARRIVEES]["Creneau"] = 0
     data[InstanceSheetNames.SHEET_DEPARTS]["Creneau"] = 0
 
-    # Fill the new columns with the right value
+    # Remplit ces colonnes avec la valeur adaptée
     for index, row in data[InstanceSheetNames.SHEET_ARRIVEES].iterrows():
         arrival_date = row[ArriveesColumnNames.ARR_DATE]
-        if re_jour.match(arrival_date) is not None:
-            jour = datetime.datetime.strptime(arrival_date, '%d/%m/%Y').date()
-        elif re_jourheure.match(arrival_date) is not None:
-            jour = datetime.datetime.strptime(arrival_date, '%Y-%m-%d %H:%M:%S').date()
-        else:
-            jour = arrival_date.date()
-        time_delta = jour - first_day
-        numero_jour = time_delta.days + 1
         time_str = row[ArriveesColumnNames.ARR_HOUR]
-        horaire = datetime.datetime.strptime(time_str, '%H:%M:%S').time()
-        heure, minute = horaire.hour, horaire.minute
-        creneau = horaires.triplet_vers_entier(numero_jour, heure, minute)
+        creneau = creneau_from_train_info(first_day, time_str, arrival_date)
         data[InstanceSheetNames.SHEET_ARRIVEES].loc[index, "Creneau"] = creneau
 
     for index, row in data[InstanceSheetNames.SHEET_DEPARTS].iterrows():
         departure_date = row[DepartsColumnNames.DEP_DATE]
-        if re_jour.match(departure_date) is not None:
-            jour = datetime.datetime.strptime(departure_date, '%d/%m/%Y').date()
-        elif re_jourheure.match(departure_date) is not None:
-            jour = datetime.datetime.strptime(departure_date, '%Y-%m-%d %H:%M:%S').date()
-        else:
-            jour = departure_date.date()
-        time_delta = jour - first_day
-        numero_jour = time_delta.days + 1
         time_str = row[DepartsColumnNames.DEP_HOUR]
-        horaire = datetime.datetime.strptime(time_str, '%H:%M:%S').time()
-        heure, minute = horaire.hour, horaire.minute
-        creneau = horaires.triplet_vers_entier(numero_jour, heure, minute)
+        creneau = creneau_from_train_info(first_day, time_str, departure_date)
         data[InstanceSheetNames.SHEET_DEPARTS].loc[index, "Creneau"] = creneau
+
+def creneau_from_train_info(first_day, train_date, train_time):
+    """
+    Prend en argument les informations relatives à un train
+    Renvoie le créneau d'arrivée (ou de départ) de ce train
+    """
+    if re_jour.match(train_date) is not None:
+        jour = datetime.datetime.strptime(train_date, '%d/%m/%Y').date()
+    elif re_jourheure.match(train_date) is not None:
+        jour = datetime.datetime.strptime(train_date, '%Y-%m-%d %H:%M:%S').date()
+    else:
+        jour = train_date.date()
+    time_delta = jour - first_day
+    numero_jour = time_delta.days + 1
+    horaire = datetime.datetime.strptime(train_time, '%H:%M:%S').time()
+    heure, minute = horaire.hour, horaire.minute
+    creneau = horaires.triplet_vers_entier(numero_jour, heure, minute)
+    return creneau
 
 def save_to_pickle(data, pkl_file_path):
     """
