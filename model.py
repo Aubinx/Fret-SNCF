@@ -1,10 +1,8 @@
 """Génère et optimise le modèle gurobi associé à l'instance considérée"""
 # Modules
 from gurobipy import *
-import display_tools.display_agenda as dis_agenda
 from lecture_donnees import INSTANCE, DATA_DICT, composition_train_depart, indispo_to_intervalle
 from util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames, TachesColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS, TACHES_PAR_CHANTIER
-
 import display_tools.display_by_train as dis_agenda
 
 def linearise_abs(model : Model, variables, contraintes, expr_var : LinExpr, var_name : str, majorant):
