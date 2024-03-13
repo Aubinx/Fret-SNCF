@@ -2,7 +2,7 @@
 # Modules
 from gurobipy import *
 import display_tools.display_agenda as dis_agenda
-from lecture_donnees import DATA_DICT, composition_train_depart, indispo_to_intervalle
+from lecture_donnees import INSTANCE, DATA_DICT, composition_train_depart, indispo_to_intervalle
 from util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames, TachesColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS, TACHES_PAR_CHANTIER
 
 import display_tools.display_by_train as dis_agenda
@@ -38,6 +38,7 @@ def linearise_abs(model : Model, variables, contraintes, expr_var : LinExpr, var
 # Modèle
 MODEL = Model("Fret SNCF")
 MAJORANT = 10**6
+
 ## VARIABLES
 VARIABLES = {}
 
@@ -168,131 +169,35 @@ for chantier in ORDERED_CHANTIERS:
                     CONTRAINTES[cstr_name] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=cstr_name)
 
 # Contraintes d'occupation des machines
-# Machine de débranchement
-for i, index_1 in enumerate(ARRIVEES.index):
-    for index_2 in ARRIVEES.index[i+1:]:
-        jour_1 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_1]
-        numero_1 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_1]
-        jour_2 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_2]
-        numero_2 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_2]
-        VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = MODEL.addVar(
-            name = f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB",
-            vtype = GRB.BINARY,
-        )
-        VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = MODEL.addVar(
-            name = f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB",
-            vtype = GRB.INTEGER,
-            lb = 0
-        )
-        CONTRAINTES[f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = MODEL.addConstr(
-            MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] >= VARIABLES[f"Train_ARR_{jour_2}_{numero_2}_DEB"] - VARIABLES[f"Train_ARR_{jour_1}_{numero_1}_DEB"],
-            name = f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
-        )
-        CONTRAINTES[f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = MODEL.addConstr(
-            MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] - MAJORANT <= VARIABLES[f"Train_ARR_{jour_2}_{numero_2}_DEB"] - VARIABLES[f"Train_ARR_{jour_1}_{numero_1}_DEB"],
-            name = f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
-        )
-        CONTRAINTES[f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] >= VARIABLES[f"Train_ARR_{jour_2}_{numero_2}_DEB"] - VARIABLES[f"Train_ARR_{jour_1}_{numero_1}_DEB"],
-            name = f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
-        )
-        CONTRAINTES[f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] <= MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"],
-            name = f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
-        )
-        CONTRAINTES[f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] <= VARIABLES[f"Train_ARR_{jour_2}_{numero_2}_DEB"] - VARIABLES[f"Train_ARR_{jour_1}_{numero_1}_DEB"] + MAJORANT - MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"],
-            name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
-        )
-        CONTRAINTES[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = MODEL.addConstr(
-            2 * VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] - VARIABLES[f"Train_ARR_{jour_2}_{numero_2}_DEB"] + VARIABLES[f"Train_ARR_{jour_1}_{numero_1}_DEB"] >= 15,
-            name = f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
-        )
-
-# Machine de formation
-for i, index_1 in enumerate(DEPARTS.index):
-    for index_2 in DEPARTS.index[i+1:]:
-        jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
-        numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
-        jour_2 = DEPARTS[DepartsColumnNames.DEP_DATE][index_2]
-        numero_2 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
-        VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = MODEL.addVar(
-            name = f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR",
-            vtype = GRB.BINARY,
-        )
-        VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = MODEL.addVar(
-            name = f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR",
-            vtype = GRB.INTEGER,
-            lb = 0
-        )
-        CONTRAINTES[f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = MODEL.addConstr(
-            MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] >= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_FOR"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_FOR"],
-            name = f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
-        )
-        CONTRAINTES[f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = MODEL.addConstr(
-            MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] - MAJORANT <= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_FOR"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_FOR"],
-            name = f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
-        )
-        CONTRAINTES[f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] >= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_FOR"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_FOR"],
-            name = f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
-        )
-        CONTRAINTES[f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] <= MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"],
-            name = f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
-        )
-        CONTRAINTES[f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] <= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_FOR"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_FOR"] + MAJORANT - MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"],
-            name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
-        )
-        CONTRAINTES[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = MODEL.addConstr(
-            2 * VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] - VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_FOR"] + VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_FOR"] >= 15,
-            name = f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
-        )
-
-# Machine de dégarage
-for i, index_1 in enumerate(DEPARTS.index):
-    for index_2 in DEPARTS.index[i+1:]:
-        jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
-        numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
-        jour_2 = DEPARTS[DepartsColumnNames.DEP_DATE][index_2]
-        numero_2 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
-        VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = MODEL.addVar(
-            name = f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG",
-            vtype = GRB.BINARY,
-        )
-        VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = MODEL.addVar(
-            name = f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG",
-            vtype = GRB.INTEGER,
-            lb = 0
-        )
-        CONTRAINTES[f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = MODEL.addConstr(
-            MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] >= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_DEG"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_DEG"],
-            name = f"Occupation_Machine_C1_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
-        )
-        CONTRAINTES[f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = MODEL.addConstr(
-            MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] - MAJORANT <= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_DEG"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_DEG"],
-            name = f"Occupation_Machine_C2_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
-        )
-        CONTRAINTES[f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] >= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_DEG"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_DEG"],
-            name = f"Occupation_Machine_C3_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
-        )
-        CONTRAINTES[f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] <= MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"],
-            name = f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
-        )
-        CONTRAINTES[f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] <= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_DEG"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_DEG"] + MAJORANT - MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"],
-            name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
-        )
-        CONTRAINTES[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = MODEL.addConstr(
-            2 * VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] - VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_DEG"] + VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_DEG"] >= 15,
-            name = f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
-        )
+def add_constr_occu_machine(model, variables, contraintes, jour1, num1, jour2, num2, machine_id, majorant):
+    type_train = "ARR" if machine_id == ORDERED_MACHINES[0] else "DEP"
+    train_1 = variables[f"Train_{type_train}_{jour1}_{num1}_{machine_id}"]
+    train_2 = variables[f"Train_{type_train}_{jour2}_{num2}_{machine_id}"]
+    to_abs = train_2 - train_1
+    name_new_var = f"OCCUPATION_MACHINE_{jour1}_{num1}_{jour2}_{num2}_{machine_id}"
+    cstr_name = "Constr_"+name_new_var
+    lin_abs = linearise_abs(model, variables, contraintes, to_abs, name_new_var, majorant)
+    contraintes[cstr_name] = model.addConstr(lin_abs >= 15, name=cstr_name)
+for machine in ORDERED_MACHINES:
+    if machine == ORDERED_MACHINES[0]: # Machine de débranchement
+        for i, index_1 in enumerate(ARRIVEES.index):
+            for index_2 in ARRIVEES.index[i+1:]:
+                jour_1 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_1]
+                numero_1 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_1]
+                jour_2 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_2]
+                numero_2 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_2]
+                add_constr_occu_machine(MODEL, VARIABLES, CONTRAINTES, jour_1, numero_1, jour_2, numero_2, machine, MAJORANT)
+    else:
+        for i, index_1 in enumerate(DEPARTS.index):
+            for index_2 in DEPARTS.index[i+1:]:
+                jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
+                numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
+                jour_2 = DEPARTS[DepartsColumnNames.DEP_DATE][index_2]
+                numero_2 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
+                add_constr_occu_machine(MODEL, VARIABLES, CONTRAINTES, jour_1, numero_1, jour_2, numero_2, machine, MAJORANT)                 
 
 MODEL.update()
-#MODEL.write("Modeles/model_WPY_simple_jalon1.lp")
+# MODEL.write(f"Modeles/model_{INSTANCE}.lp")
 # MODEL.display()
 MODEL.params.OutputFlag = 0
 MODEL.optimize()
