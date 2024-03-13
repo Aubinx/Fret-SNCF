@@ -2,8 +2,8 @@
 # Modules
 from gurobipy import *
 
-from lecture_donnees import DATA_DICT, composition_train_depart
-from util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames
+from lecture_donnees import DATA_DICT, composition_train_depart, indispo_to_intervalle
+from util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames, TachesColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS
 import horaires
 
 
@@ -84,7 +84,7 @@ for index in arrivees.index :
     numero = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
     creneau_arrivee = arrivees[ArriveesColumnNames.ARR_CRENEAU][index]
     CONTRAINTES[f"Train_ARR_{jour}_{numero}_ORDRE"] = m.addConstr(
-        VARIABLES[f"Train_ARR_{jour}_{numero}_DEB"] >= creneau_arrivee + 12,
+        VARIABLES[f"Train_ARR_{jour}_{numero}_DEB"] >= creneau_arrivee + 60,
         name = f"Train_ARR_{jour}_{numero}_ORDRE"
     )
 
@@ -94,16 +94,60 @@ for index in departs.index :
     numero = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
     creneau_depart = departs[DepartsColumnNames.DEP_CRENEAU][index]
     CONTRAINTES[f"Train_DEP_{jour}_{numero}_ORDRE_DEG"] = m.addConstr(
-        VARIABLES[f"Train_DEP_{jour}_{numero}_DEG"] >= VARIABLES[f"Train_DEP_{jour}_{numero}_FOR"] + 33,
+        VARIABLES[f"Train_DEP_{jour}_{numero}_DEG"] >= VARIABLES[f"Train_DEP_{jour}_{numero}_FOR"] + 165,
         name = f"Train_DEP_{jour}_{numero}_ORDRE_DEG"
     )
     CONTRAINTES[f"Train_DEP_{jour}_{numero}_ORDRE_DEP"] = m.addConstr(
-        VARIABLES[f"Train_DEP_{jour}_{numero}_DEG"] + 7 <= creneau_depart,
+        VARIABLES[f"Train_DEP_{jour}_{numero}_DEG"] + 35 <= creneau_depart,
         name = f"Train_DEP_{jour}_{numero}_ORDRE_DEP"
     )
 
 # Contraintes d'indisponibilité
-'''À faire quand tout le reste fonctionne'''
+# Indisponibilités Machines
+# for machine in ORDERED_MACHINES:
+#     for (creneau_min, creneau_max) in indispo_to_intervalle(DATA_DICT, "machine", machine):
+#         df = DATA_DICT[InstanceSheetNames.SHEET_TACHES]
+#         duree_task = int(df[df[TachesColumnNames.TASK_LINK]==f"{machine}="][TachesColumnNames.TASK_DURATION])
+#         if machine == ORDERED_MACHINES[0]:
+#             for index in arrivees.index :
+#                 jour = arrivees[ArriveesColumnNames.ARR_DATE][index]
+#                 numero = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+#                 creneau_arrivee = arrivees[ArriveesColumnNames.ARR_CRENEAU][index]
+#                 to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task + 1)
+#                 lin_abs = linearise_abs(m, VARIABLES, CONTRAINTES, to_abs, f"Train_ARR_{jour}_{numero}_INDISPO_{machine}", M)
+#                 CONTRAINTES[f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}"] = m.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}")
+#         else:
+#             for index in departs.index :
+#                 jour = departs[DepartsColumnNames.DEP_DATE][index]
+#                 numero = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+#                 creneau_arrivee = departs[DepartsColumnNames.DEP_CRENEAU][index]
+#                 to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task + 1)
+#                 lin_abs = linearise_abs(m, VARIABLES, CONTRAINTES, to_abs, f"Train_DEP_{jour}_{numero}_INDISPO_{machine}", M)
+#                 CONTRAINTES[f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}"] = m.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}")
+
+#Indisponibilités Chantiers
+# for chantier in ORDERED_CHANTIERS:
+#     for (creneau_min, creneau_max) in indispo_to_intervalle(DATA_DICT, "chantier", chantier):
+#         df = DATA_DICT[InstanceSheetNames.SHEET_TACHES]
+#         duree_task = df.iloc[df[TachesColumnNames.TASK_CHANTIER]==chantier, TachesColumnNames.TASK_DURATION]
+#         if machine == ORDERED_MACHINES[0]:
+#             for index in arrivees.index :
+#                 jour = arrivees[ArriveesColumnNames.ARR_DATE][index]
+#                 numero = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+#                 creneau_arrivee = arrivees[ArriveesColumnNames.ARR_CRENEAU][index]
+#                 to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task + 1)
+#                 lin_abs = linearise_abs(m, VARIABLES, CONTRAINTES, to_abs, f"Train_ARR_{jour}_{numero}_INDISPO_{machine}", M)
+#                 CONTRAINTES[f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}"] = m.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}")
+#         else:
+#             for index in departs.index :
+#                 jour = departs[DepartsColumnNames.DEP_DATE][index]
+#                 numero = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+#                 creneau_arrivee = departs[DepartsColumnNames.DEP_CRENEAU][index]
+#                 to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task + 1)
+#                 lin_abs = linearise_abs(m, VARIABLES, CONTRAINTES, to_abs, f"Train_DEP_{jour}_{numero}_INDISPO_{machine}", M)
+#                 CONTRAINTES[f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}"] = m.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}")
+
+
 #Test indipso machine DEB
 t_min = 0
 t_max = horaires.triplet_vers_entier(1, 13, 0)
@@ -122,11 +166,13 @@ for index in departs.index :
     trains_arrivee_lies = composition_train_depart(DATA_DICT, id_train_depart)
     for jour_arrivee, numero_arrivee in trains_arrivee_lies:
         CONTRAINTES[f"Train_RAC_{jour_arrivee}_{numero_arrivee}_{jour_depart}_{numero_depart}"] = m.addConstr(
-            VARIABLES[f"Train_DEP_{jour_depart}_{numero_depart}_FOR"] >= VARIABLES[f"Train_ARR_{jour_arrivee}_{numero_arrivee}_DEB"] + 3,
+            VARIABLES[f"Train_DEP_{jour_depart}_{numero_depart}_FOR"] >= VARIABLES[f"Train_ARR_{jour_arrivee}_{numero_arrivee}_DEB"] + 15,
             name = f"Train_RAC_{jour_arrivee}_{numero_arrivee}_{jour_depart}_{numero_depart}"
         )
 
 # Contraintes d'occupation des machines
+
+# Machine de débranchement
 for i, index_1 in enumerate(arrivees.index):
     for index_2 in arrivees.index[i+1:]:
         jour_1 = arrivees[ArriveesColumnNames.ARR_DATE][index_1]
@@ -163,10 +209,11 @@ for i, index_1 in enumerate(arrivees.index):
             name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
         )
         CONTRAINTES[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = m.addConstr(
-            2 * VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] - VARIABLES[f"Train_ARR_{jour_2}_{numero_2}_DEB"] + VARIABLES[f"Train_ARR_{jour_1}_{numero_1}_DEB"] >= 3,
+            2 * VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] - VARIABLES[f"Train_ARR_{jour_2}_{numero_2}_DEB"] + VARIABLES[f"Train_ARR_{jour_1}_{numero_1}_DEB"] >= 15,
             name = f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
         )
 
+# Machine de formation
 for i, index_1 in enumerate(departs.index):
     for index_2 in departs.index[i+1:]:
         jour_1 = departs[DepartsColumnNames.DEP_DATE][index_1]
@@ -203,10 +250,11 @@ for i, index_1 in enumerate(departs.index):
             name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
         )
         CONTRAINTES[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = m.addConstr(
-            2 * VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] - VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_FOR"] + VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_FOR"] >= 3,
+            2 * VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] - VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_FOR"] + VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_FOR"] >= 15,
             name = f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
         )
 
+# Machine de dégarage
 for i, index_1 in enumerate(departs.index):
     for index_2 in departs.index[i+1:]:
         jour_1 = departs[DepartsColumnNames.DEP_DATE][index_1]
@@ -243,7 +291,7 @@ for i, index_1 in enumerate(departs.index):
             name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
         )
         CONTRAINTES[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = m.addConstr(
-            2 * VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] - VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_DEG"] + VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_DEG"] >= 3,
+            2 * VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] - VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_DEG"] + VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_DEG"] >= 15,
             name = f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
         )
 
