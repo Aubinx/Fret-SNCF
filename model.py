@@ -1,10 +1,9 @@
 """Génère et optimise le modèle gurobi associé à l'instance considérée"""
 # Modules
 from gurobipy import *
-
+import display_tools.display_agenda as dis_agenda
 from lecture_donnees import DATA_DICT, composition_train_depart, indispo_to_intervalle
-from util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames, TachesColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS
-import horaires
+from util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames, TachesColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS, TACHES_PAR_CHANTIER
 
 import display_tools.display_by_train as dis_agenda
 
@@ -23,7 +22,7 @@ def linearise_abs(model : Model, variables, contraintes, expr_var : LinExpr, var
     ci1 = model.addConstr(prod >= expr_var, name=f"linabs_ConstrInteger1_{var_name}")
     ci2 = model.addConstr(prod <= majorant * delta, name=f"linabs_ConstrInteger2_{var_name}")
     ci3 = model.addConstr(prod <= expr_var - majorant * (delta - 1), name=f"linabs_ConstrInteger3_{var_name}")
-    
+
     # Mettre à jour les dictionnaires des variables et contraintes
     model.update()
     variables[delta.VarName] = delta
@@ -33,16 +32,14 @@ def linearise_abs(model : Model, variables, contraintes, expr_var : LinExpr, var
     contraintes[ci1.ConstrName] = ci1
     contraintes[ci2.ConstrName] = ci2
     contraintes[ci3.ConstrName] = ci3
-    lin_abs = LinExpr(2 * prod - expr_var)
-    return lin_abs
+    linear_abs = LinExpr(2 * prod - expr_var)
+    return linear_abs
 
 # Modèle
 MODEL = Model("Fret SNCF")
-
+MAJORANT = 10**6
 ## VARIABLES
 VARIABLES = {}
-
-MAJORANT = 10**6
 
 # Variables de décision concernant les trains à l'arrivée :
 ARRIVEES = DATA_DICT[InstanceSheetNames.SHEET_ARRIVEES]
@@ -71,7 +68,7 @@ for index in DEPARTS.index:
         lb = 0
     )
 
-# Variables de décision concernant l'occupation des voies
+# Variables de décision concernant l'occupation des voies (jalon 2)
 '''À faire quand tout le reste fonctionne'''
 
 ## CONTRAINTES
@@ -104,33 +101,6 @@ for index in DEPARTS.index :
 #     somme_departs += VARIABLES[f"Train_DEP_{jour}_{numero}_DEG"] + 35 - creneau_depart
 # MODEL.setObjective(somme_departs, GRB.MINIMIZE)
 
-# Contraintes d'indisponibilité
-# Indisponibilités Machines
-for machine in ORDERED_MACHINES:
-    df = DATA_DICT[InstanceSheetNames.SHEET_TACHES]
-    for index_indisp, (creneau_min, creneau_max) in enumerate(indispo_to_intervalle(DATA_DICT, "machine", machine)):
-        duree_task = int(df[df[TachesColumnNames.TASK_LINK]==f"{machine}="][TachesColumnNames.TASK_DURATION])
-        if machine == ORDERED_MACHINES[0]:
-            for index in ARRIVEES.index :
-                jour = ARRIVEES[ArriveesColumnNames.ARR_DATE][index]
-                numero = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
-                creneau_arrivee = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index]
-                to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
-                lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, f"train_ARR_{jour}_{numero}_INDISPO_{machine}_{index_indisp}", MAJORANT)
-                CONTRAINTES[f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}_{index_indisp}")
-        else:
-            for index in DEPARTS.index :
-                jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
-                numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
-                creneau_arrivee = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index]
-                to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
-                lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, f"train_DEP_{jour}_{numero}_INDISPO_{machine}_{index_indisp}", MAJORANT)
-                CONTRAINTES[f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}_{index_indisp}")
-
-# # Indisponibilités Chantiers
-# for chantier in ORDERED_CHANTIERS:
-#     pass
-
 # Contraintes de raccordement
 for index in DEPARTS.index :
     jour_depart = DEPARTS[DepartsColumnNames.DEP_DATE][index]
@@ -143,8 +113,61 @@ for index in DEPARTS.index :
             name = f"Train_RAC_{jour_arrivee}_{numero_arrivee}_{jour_depart}_{numero_depart}"
         )
 
-# Contraintes d'occupation des machines
+# Contraintes d'indisponibilité
+# Indisponibilités Machines
+for machine in ORDERED_MACHINES:
+    df = DATA_DICT[InstanceSheetNames.SHEET_TACHES]
+    for index_indisp, (creneau_min, creneau_max) in enumerate(indispo_to_intervalle(DATA_DICT, "machine", machine)):
+        duree_task = int(df[df[TachesColumnNames.TASK_LINK]==f"{machine}="][TachesColumnNames.TASK_DURATION])
+        if machine == ORDERED_MACHINES[0]:
+            for index in ARRIVEES.index :
+                jour = ARRIVEES[ArriveesColumnNames.ARR_DATE][index]
+                numero = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+                creneau_arrivee = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index]
+                to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
+                name_new_var = f"INDISPO_train_ARR_{jour}_{numero}_{machine}_{index_indisp}"
+                cstr_name = "Constr_"+name_new_var
+                lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, name_new_var, MAJORANT)
+                CONTRAINTES[cstr_name] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=cstr_name)
+        else:
+            for index in DEPARTS.index :
+                jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
+                numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+                creneau_arrivee = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index]
+                to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
+                name_new_var = f"INDISPO_train_DEP_{jour}_{numero}_{machine}_{index_indisp}"
+                cstr_name = "Constr_"+name_new_var
+                lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, name_new_var, MAJORANT)
+                CONTRAINTES[cstr_name] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=cstr_name)
 
+# Indisponibilités Chantiers
+for chantier in ORDERED_CHANTIERS:
+    df = DATA_DICT[InstanceSheetNames.SHEET_TACHES]
+    for index_indisp, (creneau_min, creneau_max) in enumerate(indispo_to_intervalle(DATA_DICT, "chantier", chantier)):
+        for machine in TACHES_PAR_CHANTIER[chantier]:
+            duree_task = int(df[df[TachesColumnNames.TASK_LINK]==f"{machine}="][TachesColumnNames.TASK_DURATION])
+            if machine == ORDERED_MACHINES[0]:
+                for index in ARRIVEES.index :
+                    jour = ARRIVEES[ArriveesColumnNames.ARR_DATE][index]
+                    numero = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+                    creneau_arrivee = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index]
+                    to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
+                    name_new_var = f"INDISPO_train_ARR_{jour}_{numero}_{chantier}_{machine}_{index_indisp}"
+                    cstr_name = "Constr_"+name_new_var
+                    lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, name_new_var, MAJORANT)
+                    CONTRAINTES[cstr_name] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=cstr_name)
+            else:
+                for index in DEPARTS.index :
+                    jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
+                    numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+                    creneau_arrivee = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index]
+                    to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
+                    name_new_var = f"INDISPO_train_DEP_{jour}_{numero}_{chantier}_{machine}_{index_indisp}"
+                    cstr_name = "Constr_"+name_new_var
+                    lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, name_new_var, MAJORANT)
+                    CONTRAINTES[cstr_name] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=cstr_name)
+
+# Contraintes d'occupation des machines
 # Machine de débranchement
 for i, index_1 in enumerate(ARRIVEES.index):
     for index_2 in ARRIVEES.index[i+1:]:
@@ -271,11 +294,8 @@ for i, index_1 in enumerate(DEPARTS.index):
 MODEL.update()
 #MODEL.write("Modeles/model_WPY_simple_jalon1.lp")
 # MODEL.display()
+MODEL.params.OutputFlag = 0
 MODEL.optimize()
-
-# for var in VARIABLES:
-#     print(f"{var}: {VARIABLES[var].x}")
-#     print("triplet :", horaires.entier_vers_triplet(int(VARIABLES[var].x)))
 
 if __name__=='__main__':
     indispo = []
