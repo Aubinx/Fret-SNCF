@@ -13,7 +13,7 @@ import horaires
 
 # Chemin d'accès du fichier contenant l'instance
 ALL_INSTANCES = ["mini_instance", "instance_WPY_simple", "instance_WPY_realiste_jalon1"]
-INSTANCE = ALL_INSTANCES[2]
+INSTANCE = ALL_INSTANCES[0]
 INSTANCE_DIR = "Instances/" + INSTANCE
 INSTANCE_FILE = INSTANCE_DIR + ".xlsx"
 INSTANCE_PICKLE_FILE = INSTANCE_DIR + ".pkl"
