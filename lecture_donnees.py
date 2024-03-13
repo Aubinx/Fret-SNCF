@@ -12,12 +12,11 @@ from util import (InstanceSheetNames, ChantiersColumnNames, CorrespondancesColum
 import horaires
 
 # Chemin d'accès du fichier contenant l'instance
-INSTANCE = "Instances/instance_WPY_simple"
-"Instances/instance_WPY_realiste_jalon1"
-"Instances/instance_WPY_simple"
-"Instances/mini_instance"
-INSTANCE_FILE = INSTANCE + ".xlsx"
-INSTANCE_PICKLE_FILE = INSTANCE + ".pkl"
+ALL_INSTANCES = ["mini_instance", "instance_WPY_simple", "instance_WPY_realiste_jalon1"]
+INSTANCE = ALL_INSTANCES[2]
+INSTANCE_DIR = "Instances/" + INSTANCE
+INSTANCE_FILE = INSTANCE_DIR + ".xlsx"
+INSTANCE_PICKLE_FILE = INSTANCE_DIR + ".pkl"
 
 # Expressions régulières pour les différents formats de jours
 # qui apparaissent à la lecture du fichier excel par pandas
@@ -253,11 +252,4 @@ def creneau_from_indisp(indispos_creneaux, indisp):
 
 if __name__ == "__main__":
     print(DATA_DICT.keys())
-    print("===========")
-    print("Test indispo Machines/Chantiers")
-    thing = indispo_to_intervalle(DATA_DICT, "machine", "FOR")
-    print(thing)
-    for start, end in thing:
-        print("Debut : ", horaires.entier_vers_triplet(start))
-        print("Fin : ", horaires.entier_vers_triplet(end))
     print("===========")
