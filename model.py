@@ -117,7 +117,7 @@ for machine in ORDERED_MACHINES:
                 creneau_arrivee = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index]
                 to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
                 lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, f"train_ARR_{jour}_{numero}_INDISPO_{machine}_{index_indisp}", MAJORANT)
-                CONTRAINTES[f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}")
+                CONTRAINTES[f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}_{index_indisp}")
         else:
             for index in DEPARTS.index :
                 jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
@@ -125,7 +125,7 @@ for machine in ORDERED_MACHINES:
                 creneau_arrivee = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index]
                 to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
                 lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, f"train_DEP_{jour}_{numero}_INDISPO_{machine}_{index_indisp}", MAJORANT)
-                CONTRAINTES[f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}")
+                CONTRAINTES[f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}_{index_indisp}")
 
 # # Indisponibilités Chantiers
 # for chantier in ORDERED_CHANTIERS:
