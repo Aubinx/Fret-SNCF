@@ -2,6 +2,7 @@
 
 ORDERED_MACHINES = ["DEB", "FOR", "DEG"]
 ORDERED_CHANTIERS = ["WPY_REC", "WPY_FOR", "WPY_DEP"]
+TACHES_PAR_CHANTIER = {"WPY_REC": ["DEB"], "WPY_FOR": ["FOR", "DEG"], "WPY_DEP": []}
 
 class InstanceSheetNames:
     SHEET_CHANTIERS = "Chantiers"
@@ -49,3 +50,11 @@ class TachesColumnNames:
     TASK_DURATION = "Durée"
     TASK_CHANTIER = "Chantier"
     TASK_ORDRE = "Ordre"
+
+class OutputColumnNames:
+    OUT_TASK_ID = "Id tâche"
+    OUT_TASK_TYPE = "Type de tâche"
+    OUT_DATE = "Jour"
+    OUT_START_TIME = "Heure début"
+    OUT_DURATION = "Durée"
+    OUT_TRAIN = "Sillon"
