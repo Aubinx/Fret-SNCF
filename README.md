@@ -10,6 +10,7 @@ Le dossier "display_tools" contient tous les modules que nous avons développé 
 
 Ensuite il y a plusieurs fichiers :
 - le .gitignore
+- requirements.txt qui permet de savoir avec quelles bibliothèques python et quelles versions nous avons travaillé. 
 - horaires.py permet de gérer les dates en passant du format entier que nous utilisons dans le modèle à celui usuel avec l'heure et la date.
 - lecture_donnees.py qui permet de récupérer toutes les donnés utiles à partir des fichiers du dossier Instances : par exemple les informations sur les trains d'arrivées et de départ et les indisponibilités des machines.
 - model.py : c'est le fichier qu'il faut lancer pour faire tourner le modèle d'optimisation implémenté.
