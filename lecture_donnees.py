@@ -18,8 +18,10 @@ INSTANCE_PICKLE_FILE = INSTANCE + ".pkl"
 
 # Expressions régulières pour les différents formats de jours
 # qui apparaissent à la lecture du fichier excel par pandas
-re_jour = re.compile(u'\\d{2}/\\d{2}/\\d{4}')
-re_jourheure = re.compile(u'\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}')
+re_jour = re.compile('\\d{2}/\\d{2}/\\d{4}') # jj/mm/aaaa
+re_jourheure = re.compile('\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}') # aaaa-mm-jj HH:MM:SS
+re_hour_min = re.compile('\\d{2}:\\d{2}') # HH:MM
+re_hour_min_sec = re.compile('\\d{2}:\\d{2}:\\d{2}') # HH:MM:SS
 
 ## CHARGER L'INSTANCE
 def load_instance(file_path) -> dict:
@@ -27,22 +29,39 @@ def load_instance(file_path) -> dict:
     Charge l'instance du problème de la gare de fret donnée par `file_path` 
     et crée un dictionnaire qui stocke toutes le données pertinentes
     """
+    print("Début de la lecture de données")
     all_dict = {}
+    print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_CHANTIERS}")
     all_dict[InstanceSheetNames.SHEET_CHANTIERS] = pd.read_excel(file_path,
                     sheet_name=InstanceSheetNames.SHEET_CHANTIERS, dtype=str)
+    print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_CHANTIERS}")
+    print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_MACHINES}")
     all_dict[InstanceSheetNames.SHEET_MACHINES] = pd.read_excel(file_path,
                     sheet_name=InstanceSheetNames.SHEET_MACHINES, dtype=str)
+    print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_MACHINES}")
+    print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_ARRIVEES}")
     all_dict[InstanceSheetNames.SHEET_ARRIVEES] = pd.read_excel(file_path,
                     sheet_name=InstanceSheetNames.SHEET_ARRIVEES, dtype=str)
+    print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_ARRIVEES}")
+    print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_DEPARTS}")
     all_dict[InstanceSheetNames.SHEET_DEPARTS] = pd.read_excel(file_path,
                     sheet_name=InstanceSheetNames.SHEET_DEPARTS, dtype=str)
+    print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_DEPARTS}")
+    print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_CORRESPONDANCES}")
     all_dict[InstanceSheetNames.SHEET_CORRESPONDANCES] = pd.read_excel(file_path,
                     sheet_name=InstanceSheetNames.SHEET_CORRESPONDANCES, dtype=str)
+    print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_CORRESPONDANCES}")
+    print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_TACHES}")
     all_dict[InstanceSheetNames.SHEET_TACHES] = pd.read_excel(file_path,
                     sheet_name=InstanceSheetNames.SHEET_TACHES, dtype=str)
+    print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_TACHES}")
+    print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
     all_dict[InstanceSheetNames.SHEET_ROULEMENTS] = pd.read_excel(file_path,
                     sheet_name=InstanceSheetNames.SHEET_ROULEMENTS, dtype=str)
+    print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
+    print("Standardisation de tous les formats de dates")
     set_date_to_standard(all_dict)
+    print("Ajout des creneaux")
     dates_to_creneaux(all_dict)
     return all_dict
 
@@ -102,13 +121,13 @@ def dates_to_creneaux(data):
     for index, row in data[InstanceSheetNames.SHEET_ARRIVEES].iterrows():
         arrival_date = row[ArriveesColumnNames.ARR_DATE]
         time_str = row[ArriveesColumnNames.ARR_HOUR]
-        creneau = creneau_from_train_info(first_day, time_str, arrival_date)
+        creneau = creneau_from_train_info(first_day, arrival_date, time_str)
         data[InstanceSheetNames.SHEET_ARRIVEES].loc[index, "Creneau"] = creneau
 
     for index, row in data[InstanceSheetNames.SHEET_DEPARTS].iterrows():
         departure_date = row[DepartsColumnNames.DEP_DATE]
         time_str = row[DepartsColumnNames.DEP_HOUR]
-        creneau = creneau_from_train_info(first_day, time_str, departure_date)
+        creneau = creneau_from_train_info(first_day, departure_date, time_str)
         data[InstanceSheetNames.SHEET_DEPARTS].loc[index, "Creneau"] = creneau
 
 def creneau_from_train_info(first_day, train_date, train_time):
@@ -121,10 +140,16 @@ def creneau_from_train_info(first_day, train_date, train_time):
     elif re_jourheure.match(train_date) is not None:
         jour = datetime.datetime.strptime(train_date, '%Y-%m-%d %H:%M:%S').date()
     else:
+        print(train_date)
         jour = train_date.date()
     time_delta = jour - first_day
     numero_jour = time_delta.days + 1
-    horaire = datetime.datetime.strptime(train_time, '%H:%M:%S').time()
+    if re_hour_min.match(train_time) is not None:
+        horaire = datetime.datetime.strptime(train_time, '%H:%M:%S').time()
+    elif re_hour_min_sec.match(train_time) is not None:
+        horaire = datetime.datetime.strptime(train_time, '%H:%M').time()
+    else:
+        horaire = datetime.datetime.strptime(train_time, '%H:%M:%S').time()
     heure, minute = horaire.hour, horaire.minute
     creneau = horaires.triplet_vers_entier(numero_jour, heure, minute)
     return creneau
