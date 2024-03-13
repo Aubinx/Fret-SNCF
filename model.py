@@ -6,7 +6,7 @@ from lecture_donnees import DATA_DICT, composition_train_depart, indispo_to_inte
 from util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames, TachesColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS
 import horaires
 
-import display_tools.display_agenda as dis_agenda
+import display_tools.display_by_train as dis_agenda
 
 def linearise_abs(model : Model, variables, contraintes, expr_var : LinExpr, var_name : str, majorant):
     """
@@ -269,7 +269,7 @@ for i, index_1 in enumerate(DEPARTS.index):
         )
 
 MODEL.update()
-MODEL.write("Modeles/model_WPY_simple_jalon1.lp")
+#MODEL.write("Modeles/model_WPY_simple_jalon1.lp")
 # MODEL.display()
 MODEL.optimize()
 
@@ -278,6 +278,12 @@ MODEL.optimize()
 #     print("triplet :", horaires.entier_vers_triplet(int(VARIABLES[var].x)))
 
 if __name__=='__main__':
+    indispo = []
+    for machine in ORDERED_MACHINES:
+        for index_indisp, (creneau_min, creneau_max) in enumerate(indispo_to_intervalle(
+                    DATA_DICT, "machine", machine)):
+            indispo.append((machine, creneau_min, creneau_max))
     earliest_arrival = min(ARRIVEES['JARR'])
     latest_departure = max(DEPARTS["JDEP"])
-    dis_agenda.full_process(VARIABLES, (earliest_arrival, latest_departure), ARRIVEES, DEPARTS)
+    dis_agenda.full_process(VARIABLES, (earliest_arrival, latest_departure),
+                            ARRIVEES, DEPARTS, indispo)
