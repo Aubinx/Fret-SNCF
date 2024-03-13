@@ -5,7 +5,18 @@ import plotly.graph_objects as go
 from display_tools.color import generate_colors
 
 import horaires
+from util import ArriveesColumnNames, DepartsColumnNames
 
+# TOOLS 
+
+def darker_color_tool(color, factor=.6):
+    """ Darkens a color with a factor"""
+    _r, _g, _b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+    # Assombrir les composantes RGB
+    r_assombri = int(_r * factor)
+    g_assombri = int(_g * factor)
+    b_assombri = int(_b * factor)
+    return f"#{r_assombri:02x}{g_assombri:02x}{b_assombri:02x}"
 
 def add_task_to_agenda(fig, start_time, end_time, names, color, place, ref_day):
     """ Add a task to the displayed agenda """
@@ -39,13 +50,7 @@ def add_task_to_agenda(fig, start_time, end_time, names, color, place, ref_day):
         difference = end - start
         _x = start + difference / 2
         _y= delta_day+.5/size
-        _r, _g, _b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
-        # Assombrir les composantes RGB
-        facteur = .5
-        r_assombri = int(_r * facteur)
-        g_assombri = int(_g * facteur)
-        b_assombri = int(_b * facteur)
-        couleur_assombrie = f"#{r_assombri:02x}{g_assombri:02x}{b_assombri:02x}"
+        couleur_assombrie = darker_color_tool(color)
         fig.add_annotation(
             x=_x, y=_y, text=task_name, showarrow=False,
             xanchor='center', xshift=0, yanchor='middle',
@@ -131,7 +136,7 @@ def generate_empty_agenda(start, end, tasks, color_codes):
         'font': {'size': 25}  # Adjust font properties as needed
     }
 )
-    fig.show()
+    return fig
 
 def import_tasks_from_model(solved_variables, earliest_arrival):
     """ Converts the result of the model into displayable data"""
@@ -174,3 +179,78 @@ def import_tasks_from_model(solved_variables, earliest_arrival):
     tasks = tuple(tasks)
     end_date = max(dates)
     return(tasks, trains_color, (start_date, end_date))
+
+def import_arrival_from_model(fig, arrival_pandas, start_date, color_codes):
+    """ Imports and displays the hour for arrival for each train """
+    def date_code_to_date_time_and_day(date_tuple):
+        day, hour, minute = date_tuple
+        date = start_date.replace(hour=hour, minute=minute) + timedelta(days=day-1)
+        delta = date-start_date
+        return date, delta.days
+
+    for index in arrival_pandas.index :
+        jour = arrival_pandas[ArriveesColumnNames.ARR_DATE][index]
+        numero = arrival_pandas[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+        creneau_arrivee, delta_day = date_code_to_date_time_and_day(horaires.entier_vers_triplet(int(arrival_pandas[ArriveesColumnNames.ARR_CRENEAU][index])))
+        str_train = f"Train_ARR_{numero}"
+        # fig.add_annotation(
+        #     x=creneau_arrivee, y=delta_day, text=str_train, showarrow=False,
+        #     xanchor='center', xshift=0, yanchor='middle',
+        #     font={'color':'black'}
+        #                    )
+        # fig.add_shape(
+        #     type="line",
+        #     x0=creneau_arrivee,
+        #     y0=delta_day,
+        #     x1=creneau_arrivee,
+        #     y1=delta_day+1,
+        #     line=dict(
+        #         color="black",
+        #         width=2,
+        #         dash="dashdot",
+        #                     ),
+        #     name="Vertical Line",  # Name for the line
+        #     hoverinfo="name"  # Show the name when hovering over the line
+        #                 )
+        color = darker_color_tool(color_codes[f"Train_ARR_{jour}_{numero}"])
+        fig.add_trace(go.Scatter(
+            x=[creneau_arrivee, creneau_arrivee],
+            y=[delta_day, delta_day+1],
+            mode="lines",
+            line=dict(color=color, width=3, dash="dashdot"),
+            name=str_train,
+            hovertemplate="name"  # Show the name when hovering over the line
+))
+
+def import_departures_from_model(fig, departures_pandas, start_date, color_codes):
+    """ Imports and displays the hour for arrival for each train """
+    def date_code_to_date_time_and_day(date_tuple):
+        day, hour, minute = date_tuple
+        date = start_date.replace(hour=hour, minute=minute) + timedelta(days=day-1)
+        delta = date-start_date
+        return date, delta.days
+        
+    for index in departures_pandas.index :
+        jour = departures_pandas[DepartsColumnNames.DEP_DATE][index]
+        numero = departures_pandas[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+        creneau_dep, delta_day = date_code_to_date_time_and_day(horaires.entier_vers_triplet(int(departures_pandas[DepartsColumnNames.DEP_CRENEAU][index])))
+        str_train = f"Train_DEP_{numero}"
+        color = darker_color_tool(color_codes[f"Train_DEP_{jour}_{numero}"])
+        fig.add_trace(go.Scatter(
+            x=[creneau_dep, creneau_dep],
+            y=[delta_day, delta_day+1],
+            mode="lines",
+            line=dict(color=color, width=3, dash="dashdot"),
+            name=str_train,
+            hoverinfo="name"  # Show the name when hovering over the line
+        ))
+
+
+def full_process(solved_variables, earliest_arrival, arrival_pandas, departures_pandas):
+    """ Displays the agenda with the whole data """
+    tasks, color_codes, (start_date, end_date) = import_tasks_from_model(
+                            solved_variables, earliest_arrival)
+    fig = generate_empty_agenda(start_date, end_date, tasks, color_codes)
+    import_arrival_from_model(fig, arrival_pandas, start_date, color_codes)
+    import_departures_from_model(fig, departures_pandas, start_date, color_codes)
+    fig.show()
