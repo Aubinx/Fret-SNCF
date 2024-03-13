@@ -12,7 +12,9 @@ from util import (InstanceSheetNames, ChantiersColumnNames, CorrespondancesColum
 import horaires
 
 # Chemin d'accès du fichier contenant l'instance
-INSTANCE = "Instances/mini_instance"
+INSTANCE = "Instances/instance_WPY_simple"
+"Instances/instance_WPY_simple"
+"Instances/mini_instance"
 INSTANCE_FILE = INSTANCE + ".xlsx"
 INSTANCE_PICKLE_FILE = INSTANCE + ".pkl"
 
@@ -145,9 +147,9 @@ def creneau_from_train_info(first_day, train_date, train_time):
     time_delta = jour - first_day
     numero_jour = time_delta.days + 1
     if re_hour_min.match(train_time) is not None:
-        horaire = datetime.datetime.strptime(train_time, '%H:%M:%S').time()
-    elif re_hour_min_sec.match(train_time) is not None:
         horaire = datetime.datetime.strptime(train_time, '%H:%M').time()
+    elif re_hour_min_sec.match(train_time) is not None:
+        horaire = datetime.datetime.strptime(train_time, '%H:%M:%S').time()
     else:
         horaire = datetime.datetime.strptime(train_time, '%H:%M:%S').time()
     heure, minute = horaire.hour, horaire.minute

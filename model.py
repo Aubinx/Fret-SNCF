@@ -105,26 +105,26 @@ for index in departs.index :
 
 # Contraintes d'indisponibilité
 # Indisponibilités Machines
-# for machine in ORDERED_MACHINES:
-#     df = DATA_DICT[InstanceSheetNames.SHEET_TACHES]
-#     for index_indisp, (creneau_min, creneau_max) in enumerate(indispo_to_intervalle(DATA_DICT, "machine", machine)):
-#         duree_task = int(df[df[TachesColumnNames.TASK_LINK]==f"{machine}="][TachesColumnNames.TASK_DURATION])
-#         if machine == ORDERED_MACHINES[0]:
-#             for index in arrivees.index :
-#                 jour = arrivees[ArriveesColumnNames.ARR_DATE][index]
-#                 numero = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
-#                 creneau_arrivee = arrivees[ArriveesColumnNames.ARR_CRENEAU][index]
-#                 to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task + 1)
-#                 lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, f"Train_ARR_{jour}_{numero}_INDISPO_{machine}_{index_indisp}", MAJORANT)
-#                 CONTRAINTES[f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}")
-#         else:
-#             for index in departs.index :
-#                 jour = departs[DepartsColumnNames.DEP_DATE][index]
-#                 numero = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
-#                 creneau_arrivee = departs[DepartsColumnNames.DEP_CRENEAU][index]
-#                 to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task + 1)
-#                 lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, f"Train_DEP_{jour}_{numero}_INDISPO_{machine}_{index_indisp}", MAJORANT)
-#                 CONTRAINTES[f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}")
+for machine in ORDERED_MACHINES:
+    df = DATA_DICT[InstanceSheetNames.SHEET_TACHES]
+    for index_indisp, (creneau_min, creneau_max) in enumerate(indispo_to_intervalle(DATA_DICT, "machine", machine)):
+        duree_task = int(df[df[TachesColumnNames.TASK_LINK]==f"{machine}="][TachesColumnNames.TASK_DURATION])
+        if machine == ORDERED_MACHINES[0]:
+            for index in arrivees.index :
+                jour = arrivees[ArriveesColumnNames.ARR_DATE][index]
+                numero = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+                creneau_arrivee = arrivees[ArriveesColumnNames.ARR_CRENEAU][index]
+                to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task + 1)
+                lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, f"Train_ARR_{jour}_{numero}_INDISPO_{machine}_{index_indisp}", MAJORANT)
+                CONTRAINTES[f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}")
+        else:
+            for index in departs.index :
+                jour = departs[DepartsColumnNames.DEP_DATE][index]
+                numero = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+                creneau_arrivee = departs[DepartsColumnNames.DEP_CRENEAU][index]
+                to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task + 1)
+                lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, f"Train_DEP_{jour}_{numero}_INDISPO_{machine}_{index_indisp}", MAJORANT)
+                CONTRAINTES[f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}")
 
 # # Indisponibilités Chantiers
 # for chantier in ORDERED_CHANTIERS:
@@ -286,7 +286,7 @@ for i, index_1 in enumerate(departs.index):
         )
 
 MODEL.update()
-MODEL.display()
+# MODEL.display()
 MODEL.optimize()
 
 for var in VARIABLES:
