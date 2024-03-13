@@ -1,5 +1,7 @@
+"""Module contenant des informations utiles pour extraire et traiter les données"""
 
 ORDERED_MACHINES = ["DEB", "FOR", "DEG"]
+ORDERED_CHANTIERS = ["WPY_REC", "WPY_FOR", "WPY_DEP"]
 
 class InstanceSheetNames:
     SHEET_CHANTIERS = "Chantiers"
