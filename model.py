@@ -97,12 +97,12 @@ for index in DEPARTS.index :
         VARIABLES[f"Train_DEP_{jour}_{numero}_DEG"] >= VARIABLES[f"Train_DEP_{jour}_{numero}_FOR"] + 165,
         name = f"Train_DEP_{jour}_{numero}_ORDRE_DEG"
     )
-    # CONTRAINTES[f"Train_DEP_{jour}_{numero}_ORDRE_DEP"] = MODEL.addConstr(
-    #     VARIABLES[f"Train_DEP_{jour}_{numero}_DEG"] + 35 <= creneau_depart,
-    #     name = f"Train_DEP_{jour}_{numero}_ORDRE_DEP"
-    # )
-    somme_departs += VARIABLES[f"Train_DEP_{jour}_{numero}_DEG"] + 35 - creneau_depart
-MODEL.setObjective(somme_departs, GRB.MINIMIZE)
+    CONTRAINTES[f"Train_DEP_{jour}_{numero}_ORDRE_DEP"] = MODEL.addConstr(
+        VARIABLES[f"Train_DEP_{jour}_{numero}_DEG"] + 35 <= creneau_depart,
+        name = f"Train_DEP_{jour}_{numero}_ORDRE_DEP"
+    )
+#     somme_departs += VARIABLES[f"Train_DEP_{jour}_{numero}_DEG"] + 35 - creneau_depart
+# MODEL.setObjective(somme_departs, GRB.MINIMIZE)
 
 # Contraintes d'indisponibilité
 # Indisponibilités Machines
@@ -117,7 +117,7 @@ for machine in ORDERED_MACHINES:
                 creneau_arrivee = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index]
                 to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
                 lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, f"train_ARR_{jour}_{numero}_INDISPO_{machine}_{index_indisp}", MAJORANT)
-                CONTRAINTES[f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}")
+                CONTRAINTES[f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}")
         else:
             for index in DEPARTS.index :
                 jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
@@ -125,7 +125,7 @@ for machine in ORDERED_MACHINES:
                 creneau_arrivee = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index]
                 to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
                 lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, f"train_DEP_{jour}_{numero}_INDISPO_{machine}_{index_indisp}", MAJORANT)
-                CONTRAINTES[f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}")
+                CONTRAINTES[f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}_{index_indisp}"] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}")
 
 # # Indisponibilités Chantiers
 # for chantier in ORDERED_CHANTIERS:
@@ -178,7 +178,7 @@ for i, index_1 in enumerate(ARRIVEES.index):
             name = f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
         )
         CONTRAINTES[f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] <= VARIABLES[f"Train_ARR_{jour_2}_{numero_2}_DEB"] - VARIABLES[f"Train_ARR_{jour_1}_{numero_1}_DEB"] - MAJORANT + MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"],
+            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] <= VARIABLES[f"Train_ARR_{jour_2}_{numero_2}_DEB"] - VARIABLES[f"Train_ARR_{jour_1}_{numero_1}_DEB"] + MAJORANT - MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"],
             name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"
         )
         CONTRAINTES[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEB"] = MODEL.addConstr(
@@ -219,7 +219,7 @@ for i, index_1 in enumerate(DEPARTS.index):
             name = f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
         )
         CONTRAINTES[f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] <= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_FOR"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_FOR"] - MAJORANT + MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"],
+            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] <= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_FOR"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_FOR"] + MAJORANT - MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"],
             name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"
         )
         CONTRAINTES[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_FOR"] = MODEL.addConstr(
@@ -260,7 +260,7 @@ for i, index_1 in enumerate(DEPARTS.index):
             name = f"Occupation_Machine_C4_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
         )
         CONTRAINTES[f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = MODEL.addConstr(
-            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] <= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_DEG"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_DEG"] - MAJORANT + MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"],
+            VARIABLES[f"Occupation_Machine_BX_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] <= VARIABLES[f"Train_DEP_{jour_2}_{numero_2}_DEG"] - VARIABLES[f"Train_DEP_{jour_1}_{numero_1}_DEG"] + MAJORANT - MAJORANT * VARIABLES[f"Occupation_Machine_B_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"],
             name = f"Occupation_Machine_C5_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"
         )
         CONTRAINTES[f"Occupation_Machine_CF_{jour_1}_{numero_1}_{jour_2}_{numero_2}_DEG"] = MODEL.addConstr(
@@ -269,6 +269,7 @@ for i, index_1 in enumerate(DEPARTS.index):
         )
 
 MODEL.update()
+MODEL.write("Modeles/model_WPY_simple_jalon1.lp")
 # MODEL.display()
 MODEL.optimize()
 
@@ -278,5 +279,5 @@ MODEL.optimize()
 
 if __name__=='__main__':
     earliest_arrival = min(ARRIVEES['JARR'])
-    tasks, color_codes, (start_date, end_date) = dis_agenda.import_tasks_from_model(VARIABLES, earliest_arrival)
-    dis_agenda.generate_empty_agenda(start_date, end_date, tasks, color_codes)
+    latest_departure = max(DEPARTS["JDEP"])
+    dis_agenda.full_process(VARIABLES, (earliest_arrival, latest_departure), ARRIVEES, DEPARTS)
