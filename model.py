@@ -114,6 +114,19 @@ for index in DEPARTS.index :
             name = f"Train_RAC_{jour_arrivee}_{numero_arrivee}_{jour_depart}_{numero_depart}"
         )
 
+# Contrainte de placement des tâches sur des créneaux horaires
+new_vars = []
+for nom_variable in VARIABLES.keys():
+    train_str, rest = nom_variable.split("_", maxsplit=1)
+    train_str = train_str.lower()
+    new_var = f"PLACEMENT_CRENEAU_{train_str}_{rest}"
+    new_vars.append((new_var, MODEL.addVar(vtype=GRB.INTEGER, lb=0, name=new_var), nom_variable))
+for name, variable, old_var in new_vars:
+    VARIABLES[name] = variable
+    new_cstr = "Constr_" + name
+    CONTRAINTES[new_cstr] = MODEL.addConstr(variable * 15 == VARIABLES[old_var],
+                                            name=new_cstr)
+
 # Contraintes d'indisponibilité
 # Indisponibilités Machines
 for machine in ORDERED_MACHINES:
