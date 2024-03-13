@@ -128,25 +128,7 @@ for index in departs.index :
 
 # # Indisponibilités Chantiers
 # for chantier in ORDERED_CHANTIERS:
-#     for (creneau_min, creneau_max) in indispo_to_intervalle(DATA_DICT, "chantier", chantier):
-#         df = DATA_DICT[InstanceSheetNames.SHEET_TACHES]
-#         duree_task = df.iloc[df[TachesColumnNames.TASK_CHANTIER]==chantier, TachesColumnNames.TASK_DURATION]
-#         if machine == ORDERED_MACHINES[0]:
-#             for index in arrivees.index :
-#                 jour = arrivees[ArriveesColumnNames.ARR_DATE][index]
-#                 numero = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
-#                 creneau_arrivee = arrivees[ArriveesColumnNames.ARR_CRENEAU][index]
-#                 to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task + 1)
-#                 lin_abs = linearise_abs(m, VARIABLES, CONTRAINTES, to_abs, f"Train_ARR_{jour}_{numero}_INDISPO_{machine}", M)
-#                 CONTRAINTES[f"Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}"] = m.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_ARR_{jour}_{numero}_{machine}")
-#         else:
-#             for index in departs.index :
-#                 jour = departs[DepartsColumnNames.DEP_DATE][index]
-#                 numero = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
-#                 creneau_arrivee = departs[DepartsColumnNames.DEP_CRENEAU][index]
-#                 to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task + 1)
-#                 lin_abs = linearise_abs(m, VARIABLES, CONTRAINTES, to_abs, f"Train_DEP_{jour}_{numero}_INDISPO_{machine}", M)
-#                 CONTRAINTES[f"Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}"] = m.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name="Constr_INDISPO_Train_DEP_{jour}_{numero}_{machine}")
+#     pass
 
 # Contraintes de raccordement
 for index in departs.index :
@@ -286,7 +268,7 @@ for i, index_1 in enumerate(departs.index):
         )
 
 MODEL.update()
-MODEL.display()
+# MODEL.display()
 MODEL.optimize()
 
 for var in VARIABLES:
