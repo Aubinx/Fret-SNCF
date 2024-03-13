@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 
 from display_tools.color import generate_colors
 
-import Horaires
+import horaires
 
 
 def add_task_to_agenda(fig, start_time, end_time, names, color, place, ref_day):
@@ -160,7 +160,7 @@ def import_tasks_from_model(variables, earliest_date, latest_date):
                 distinct_trains.append(name)
             trains.append(name)
             taches.append(task)
-            dates.append(date_code_to_date_time(Horaires.entier_vers_triplet(int(value.x))))
+            dates.append(date_code_to_date_time(horaires.entier_vers_triplet(int(value.x))))
 
     # for i, train in enumerate(trains):
     #     print('train : ', train)
