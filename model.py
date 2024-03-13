@@ -294,6 +294,6 @@ for var in VARIABLES:
     print("triplet :", horaires.entier_vers_triplet(int(VARIABLES[var].x)))
 
 if __name__=='__main__':
-    early, late = min(arrivees['JARR']), max(departs['JDEP'])
-    tasks, color_codes, (start_date, end_date) = dis_agenda.import_tasks_from_model(VARIABLES, early, late)
+    earliest_arrival = min(arrivees['JARR'])
+    tasks, color_codes, (start_date, end_date) = dis_agenda.import_tasks_from_model(VARIABLES, earliest_arrival)
     dis_agenda.generate_empty_agenda(start_date, end_date, tasks, color_codes)

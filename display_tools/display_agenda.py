@@ -133,12 +133,10 @@ def generate_empty_agenda(start, end, tasks, color_codes):
 )
     fig.show()
 
-def import_tasks_from_model(variables, earliest_date, latest_date):
+def import_tasks_from_model(solved_variables, earliest_arrival):
     """ Converts the result of the model into displayable data"""
-    day, month, year = earliest_date.split('/')
+    day, month, year = earliest_arrival.split('/')
     start_date = datetime(int(year), int(month), int(day))
-    day, month, year = latest_date.split('/')
-    end_date = datetime(int(year), int(month), int(day))
 
     distinct_trains = []
     trains = []
@@ -153,7 +151,7 @@ def import_tasks_from_model(variables, earliest_date, latest_date):
         day, hour, minute = date_tuple
         return start_date.replace(hour=hour, minute=minute) + timedelta(days=day-1)
 
-    for var, value in variables.items():
+    for var, value in solved_variables.items():
         name, task = extract_name_task(var)
         if name is not None:
             if name not in distinct_trains:
@@ -174,4 +172,5 @@ def import_tasks_from_model(variables, earliest_date, latest_date):
     tasks = [(trains[i], taches[i], dates[i],
               timedelta(minutes=delta_temps)) for i in range(len(trains))]
     tasks = tuple(tasks)
+    end_date = max(dates)
     return(tasks, trains_color, (start_date, end_date))
