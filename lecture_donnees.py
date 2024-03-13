@@ -13,6 +13,7 @@ import horaires
 
 # Chemin d'accès du fichier contenant l'instance
 INSTANCE = "Instances/instance_WPY_simple"
+"Instances/instance_WPY_realiste_jalon1"
 "Instances/instance_WPY_simple"
 "Instances/mini_instance"
 INSTANCE_FILE = INSTANCE + ".xlsx"
@@ -57,10 +58,10 @@ def load_instance(file_path) -> dict:
     all_dict[InstanceSheetNames.SHEET_TACHES] = pd.read_excel(file_path,
                     sheet_name=InstanceSheetNames.SHEET_TACHES, dtype=str)
     print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_TACHES}")
-    print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
-    all_dict[InstanceSheetNames.SHEET_ROULEMENTS] = pd.read_excel(file_path,
-                    sheet_name=InstanceSheetNames.SHEET_ROULEMENTS, dtype=str)
-    print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
+    # print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
+    # all_dict[InstanceSheetNames.SHEET_ROULEMENTS] = pd.read_excel(file_path,
+    #                 sheet_name=InstanceSheetNames.SHEET_ROULEMENTS, dtype=str)
+    # print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
     print("Standardisation de tous les formats de dates")
     set_date_to_standard(all_dict)
     print("Ajout des creneaux")
