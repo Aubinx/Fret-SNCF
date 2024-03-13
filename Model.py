@@ -5,6 +5,8 @@ from LectureDonnees import data_dict, composition_train_depart
 from Util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames
 import Horaires
 
+import display_tools.display_agenda as dis_agenda
+
 # Modèle
 m = Model("Fret SNCF")
 
@@ -79,7 +81,7 @@ for index in departs.index :
     numero_depart = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
     id_train_depart = (jour_depart, numero_depart)
     trains_arrivee_lies = composition_train_depart(data_dict, id_train_depart)
-    print(trains_arrivee_lies)
+    #print(trains_arrivee_lies)
     for jour_arrivee, numero_arrivee in trains_arrivee_lies:
         contr[f"Train_RAC_{jour_arrivee}_{numero_arrivee}_{jour_depart}_{numero_depart}"] = m.addConstr(
             VARS[f"Train_DEP_{jour_depart}_{numero_depart}_FOR"] >= VARS[f"Train_ARR_{jour_arrivee}_{numero_arrivee}_DEB"] + 3,
@@ -208,9 +210,14 @@ for i, index_1 in enumerate(departs.index):
         )
 
 m.update()
-#m.display()
+m.display()
 m.optimize()
 
-for var in VARS:
-    print(f"{var}: {VARS[var].x}")
-    print("triplet :", Horaires.entier_vers_triplet(int(VARS[var].x)))
+# for var in VARS:
+#     print(f"{var}: {VARS[var].x}")
+#     print("triplet :", Horaires.entier_vers_triplet(int(VARS[var].x)))
+
+if __name__=='__main__':
+    early, late = min(arrivees['JARR']), max(departs['JDEP'])
+    tasks, color_codes, (start_date, end_date) = dis_agenda.import_tasks_from_model(VARS, early, late)
+    dis_agenda.generate_empty_agenda(start_date, end_date, tasks, color_codes)
