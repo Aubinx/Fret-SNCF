@@ -210,10 +210,11 @@ for machine in ORDERED_MACHINES:
 MODEL.update()
 # MODEL.write(f"Modeles/model_{INSTANCE}.lp")
 # MODEL.display()
-MODEL.params.OutputFlag = 0
-MODEL.optimize()
+# MODEL.params.OutputFlag = 0
+# MODEL.optimize()
 
 if __name__=='__main__':
+    MODEL.optimize()
     indispo = []
     for machine in ORDERED_MACHINES:
         for index_indisp, (creneau_min, creneau_max) in enumerate(indispo_to_intervalle(
