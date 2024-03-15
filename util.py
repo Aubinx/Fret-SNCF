@@ -15,7 +15,7 @@ class InstanceSheetNames:
 
 class ChantiersColumnNames:
     CHANTIER_NAME = "Chantier"
-    CHANITER_CAPA_VOIES = "Nombre de voies"
+    CHANTIER_CAPA_VOIES = "Nombre de voies"
     CHANTIER_INDISPONIBILITES = "Indisponibilites"
 
 class MachinesColumnNames:
