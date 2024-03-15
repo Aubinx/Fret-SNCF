@@ -243,7 +243,7 @@ for machine in ORDERED_MACHINES:
                 add_constr_occu_machine(MODEL, VARIABLES, CONTRAINTES, jour_1, numero_1, jour_2, numero_2, machine, MAJORANT)                 
 
 # Contraintes d'occupation des voies
-model_jalon2_min_in_obj(MODEL, VARIABLES, CONTRAINTES)
+# model_jalon2_min_in_obj(MODEL, VARIABLES, CONTRAINTES)
 # model_jalon2_min_lin(MODEL, VARIABLES, CONTRAINTES)
 
 def add_occu_voies(model, variables, contraintes, chantier_id, voie, jour1, numero1, jour2, numero2, creneau1, creneau2, majorant):
@@ -256,8 +256,10 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie, jour1, nume
         CVT_1 = variables[f"CVT_REC_{voie}_{jour1}_{numero1}"]
         CVT_2 = variables[f"CVT_REC_{voie}_{jour2}_{numero2}"]
     elif chantier_id == "FOR" :
-        train_arrivee_1 = variables[f"min_DEB_{jour1}_{numero1}"]
-        train_arrivee_2 = variables[f"min_DEB_{jour2}_{numero2}"]
+        # train_arrivee_1 = variables[f"min_DEB_{jour1}_{numero1}"]
+        # train_arrivee_2 = variables[f"min_DEB_{jour2}_{numero2}"]
+        train_arrivee_1 = None
+        train_arrivee_2 = None
         train_depart_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"]
         train_depart_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"]
     else :
