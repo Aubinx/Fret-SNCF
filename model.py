@@ -2,14 +2,27 @@
 # Modules
 from gurobipy import *
 from lecture_donnees import INSTANCE, DATA_DICT, composition_train_depart, indispo_to_intervalle
-from util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames, TachesColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS, TACHES_PAR_CHANTIER
+from util import InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames, ChantiersColumnNames, TachesColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS, TACHES_PAR_CHANTIER
+
+from model_jalon2_min_in_obj import model_jalon2_min_in_obj
+from model_jalon2_min_lin import model_jalon2_min_lin
 import display_tools.display_by_train as dis_agenda
 
-def linearise_abs(model : Model, variables, contraintes, expr_var : LinExpr, var_name : str, majorant):
+# Modèle
+MODEL = Model("Fret SNCF")
+MAJORANT = 10**6
+
+VARIABLES = {}
+CONTRAINTES = {}
+ARRIVEES = DATA_DICT[InstanceSheetNames.SHEET_ARRIVEES]
+DEPARTS = DATA_DICT[InstanceSheetNames.SHEET_DEPARTS]
+
+def linearise_abs(model : Model, expr_var : LinExpr, var_name : str, variables=VARIABLES, contraintes=CONTRAINTES, majorant=MAJORANT):
     """
     linéarise la variable `|expr_var|` en ajoutant des variables et des contraintes au modèle gurobi `model` ainsi que dans les dictionnaire `variables` et `contraintes`
     Renvoie l'expression linéaire de `|expr_var|`
     """
+    assert var_name not in VARIABLES.keys(), f"Nom de variable déjà présent dans {VARIABLES}"
     # Créer la variable binaire indicatrice et les contraintes associées
     delta = model.addVar(name=f"linabs_binary_{var_name}", vtype=GRB.BINARY)
     cb1 = model.addConstr(majorant * delta >= expr_var, name=f"linabs_ConstrBinary1_{var_name}")
@@ -33,15 +46,8 @@ def linearise_abs(model : Model, variables, contraintes, expr_var : LinExpr, var
     linear_abs = LinExpr(2 * prod - expr_var)
     return linear_abs
 
-# Modèle
-MODEL = Model("Fret SNCF")
-MAJORANT = 10**6
-
 ## VARIABLES
-VARIABLES = {}
-
 # Variables de décision concernant les trains à l'arrivée :
-ARRIVEES = DATA_DICT[InstanceSheetNames.SHEET_ARRIVEES]
 for index in ARRIVEES.index:
     jour = ARRIVEES[ArriveesColumnNames.ARR_DATE][index]
     numero = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
@@ -52,7 +58,6 @@ for index in ARRIVEES.index:
     )
 
 # Variables de décision concernant les trains au départ :
-DEPARTS = DATA_DICT[InstanceSheetNames.SHEET_DEPARTS]
 for index in DEPARTS.index:
     jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
     numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
@@ -68,11 +73,40 @@ for index in DEPARTS.index:
     )
 
 # Variables de décision concernant l'occupation des voies (jalon 2)
-'''À faire quand tout le reste fonctionne'''
+NB_VOIES = DATA_DICT[InstanceSheetNames.SHEET_CHANTIERS][ChantiersColumnNames.CHANTIER_CAPA_VOIES]
+
+# Variables d'occupation des voies pour chaque chantier
+# Occupations des voies du chantier "réception"
+for index in ARRIVEES.index:
+    jour = ARRIVEES[ArriveesColumnNames.ARR_DATE][index]
+    numero = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+    for voie in range(1, int(NB_VOIES[0]) + 1) :
+        VARIABLES[f"CVT_WPY_REC_{str(voie)}_{jour}_{numero}"] = MODEL.addVar(
+            name = f"CVT_WPY_REC_{str(voie)}_{jour}_{numero}",
+            vtype = GRB.BINARY,
+        )
+
+# Occupations des voies du chantier "formation"
+for index in DEPARTS.index:
+    jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
+    numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+    for voie in range(1, int(NB_VOIES[2]) + 1) :
+        VARIABLES[f"CVT_WPY_FOR_{str(voie)}_{jour}_{numero}"] = MODEL.addVar(
+            name = f"CVT_WPY_FOR_{str(voie)}_{jour}_{numero}",
+            vtype = GRB.BINARY,
+        )
+
+# Occupations des voies du chantier "départ"
+for index in DEPARTS.index:
+    jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
+    numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+    for voie in range(1, int(NB_VOIES[2]) + 1) :
+        VARIABLES[f"CVT_WPY_DEP_{str(voie)}_{jour}_{numero}"] = MODEL.addVar(
+            name = f"CVT_WPY_DEP_{str(voie)}_{jour}_{numero}",
+            vtype = GRB.BINARY,
+        )
 
 ## CONTRAINTES
-CONTRAINTES = {}
-
 # Contraintes sur l'ordre des tâches du train d'arrivée
 for index in ARRIVEES.index :
     jour = ARRIVEES[ArriveesColumnNames.ARR_DATE][index]
@@ -139,7 +173,7 @@ for machine in ORDERED_MACHINES:
                 to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
                 name_new_var = f"INDISPO_train_ARR_{jour}_{numero}_{machine}_{index_indisp}"
                 cstr_name = "Constr_"+name_new_var
-                lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, name_new_var, MAJORANT)
+                lin_abs = linearise_abs(MODEL, to_abs, name_new_var, VARIABLES, CONTRAINTES, MAJORANT)
                 CONTRAINTES[cstr_name] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=cstr_name)
         else:
             for index in DEPARTS.index :
@@ -149,7 +183,7 @@ for machine in ORDERED_MACHINES:
                 to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
                 name_new_var = f"INDISPO_train_DEP_{jour}_{numero}_{machine}_{index_indisp}"
                 cstr_name = "Constr_"+name_new_var
-                lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, name_new_var, MAJORANT)
+                lin_abs = linearise_abs(MODEL, to_abs, name_new_var, VARIABLES, CONTRAINTES, MAJORANT)
                 CONTRAINTES[cstr_name] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=cstr_name)
 
 # Indisponibilités Chantiers
@@ -166,7 +200,7 @@ for chantier in ORDERED_CHANTIERS:
                     to_abs = 2 * VARIABLES[f"Train_ARR_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
                     name_new_var = f"INDISPO_train_ARR_{jour}_{numero}_{chantier}_{machine}_{index_indisp}"
                     cstr_name = "Constr_"+name_new_var
-                    lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, name_new_var, MAJORANT)
+                    lin_abs = linearise_abs(MODEL, to_abs, name_new_var, VARIABLES, CONTRAINTES, MAJORANT)
                     CONTRAINTES[cstr_name] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=cstr_name)
             else:
                 for index in DEPARTS.index :
@@ -176,7 +210,7 @@ for chantier in ORDERED_CHANTIERS:
                     to_abs = 2 * VARIABLES[f"Train_DEP_{jour}_{numero}_{machine}"] - (creneau_max + creneau_min - duree_task)
                     name_new_var = f"INDISPO_train_DEP_{jour}_{numero}_{chantier}_{machine}_{index_indisp}"
                     cstr_name = "Constr_"+name_new_var
-                    lin_abs = linearise_abs(MODEL, VARIABLES, CONTRAINTES, to_abs, name_new_var, MAJORANT)
+                    lin_abs = linearise_abs(MODEL, to_abs, name_new_var, VARIABLES, CONTRAINTES, MAJORANT)
                     CONTRAINTES[cstr_name] = MODEL.addConstr(lin_abs >= creneau_max - creneau_min + duree_task, name=cstr_name)
 
 # Contraintes d'occupation des machines
@@ -187,8 +221,9 @@ def add_constr_occu_machine(model, variables, contraintes, jour1, num1, jour2, n
     to_abs = train_2 - train_1
     name_new_var = f"OCCUPATION_MACHINE_{jour1}_{num1}_{jour2}_{num2}_{machine_id}"
     cstr_name = "Constr_"+name_new_var
-    lin_abs = linearise_abs(model, variables, contraintes, to_abs, name_new_var, majorant)
+    lin_abs = linearise_abs(model, to_abs, name_new_var, variables, contraintes, majorant)
     contraintes[cstr_name] = model.addConstr(lin_abs >= 15, name=cstr_name)
+
 for machine in ORDERED_MACHINES:
     if machine == ORDERED_MACHINES[0]: # Machine de débranchement
         for i, index_1 in enumerate(ARRIVEES.index):
@@ -206,6 +241,86 @@ for machine in ORDERED_MACHINES:
                 jour_2 = DEPARTS[DepartsColumnNames.DEP_DATE][index_2]
                 numero_2 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
                 add_constr_occu_machine(MODEL, VARIABLES, CONTRAINTES, jour_1, numero_1, jour_2, numero_2, machine, MAJORANT)                 
+
+# Contraintes d'occupation des voies
+model_jalon2_min_in_obj(MODEL, VARIABLES, CONTRAINTES)
+# model_jalon2_min_lin(MODEL, VARIABLES, CONTRAINTES)
+
+def add_occu_voies(model, variables, contraintes, chantier_id, voie, jour1, numero1, jour2, numero2, creneau1, creneau2, majorant):
+    type_train = "ARR" if chantier_id == "REC" else "DEP"
+    if chantier_id == "REC" :
+        train_arrivee_1 = creneau1
+        train_arrivee_2 = creneau2
+        train_depart_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEB"] + 15
+        train_depart_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEB"] + 15
+        CVT_1 = variables[f"CVT_REC_{voie}_{jour1}_{numero1}"]
+        CVT_2 = variables[f"CVT_REC_{voie}_{jour2}_{numero2}"]
+    elif chantier_id == "FOR" :
+        train_arrivee_1 = variables[f"min_DEB_{jour1}_{numero1}"]
+        train_arrivee_2 = variables[f"min_DEB_{jour2}_{numero2}"]
+        train_depart_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"]
+        train_depart_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"]
+    else :
+        train_arrivee_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"]
+        train_arrivee_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"]
+        train_depart_1 = creneau1
+        train_depart_2 = creneau2
+        CVT_1 = variables[f"CVT_DEP_{voie}_{jour1}_{numero1}"]
+        CVT_2 = variables[f"CVT_DEP_{voie}_{jour2}_{numero2}"]
+    # Contrainte 1
+    to_abs = 2 * train_arrivee_1 - train_arrivee_2 - train_depart_2
+    name_new_var = f"CVT_{chantier_id}_{voie}_{jour1}_{numero1}_{jour2}_{numero2}"
+    cstr_name = "Constr_"+name_new_var
+    lin_abs = linearise_abs(model, to_abs, name_new_var, variables, contraintes, majorant)
+    contraintes[cstr_name] = model.addConstr(lin_abs >= train_depart_2 - train_arrivee_2 + majorant * (CVT_2 + CVT_1 - 2), name=cstr_name)
+    # Contrainte 2
+    to_abs = 2 * train_depart_1 - train_arrivee_2 - train_depart_2
+    name_new_var = f"CVT_{chantier_id}_{voie}_{jour1}_{numero1}_{jour2}_{numero2}"
+    cstr_name = "Constr_"+name_new_var
+    lin_abs = linearise_abs(model, to_abs, name_new_var, variables, contraintes, majorant)
+    contraintes[cstr_name] = model.addConstr(lin_abs >= train_depart_2 - train_arrivee_2 + majorant * (CVT_2 + CVT_1 - 2), name=cstr_name)
+
+# Chantier "réception"
+for voie in range(1, int(NB_VOIES[0]) + 1) :
+    for index_1 in ARRIVEES.index :
+        for index_2 in ARRIVEES.index :
+            if index_1 == index_2:
+                continue
+            jour_1 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_1]
+            numero_1 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_1]
+            jour_2 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_2]
+            numero_2 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_2]
+            creneau_1 = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index_1]
+            creneau_2 = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index_2]
+            add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_REC", voie, jour_1, numero_1, jour_2, numero_2, creneau_1, creneau_2, MAJORANT)
+
+# Chantier "départ"
+for voie in range(1, int(NB_VOIES[2]) + 1) :
+    for index_1 in DEPARTS.index :
+        for index_2 in DEPARTS.index :
+            if index_1 == index_2:
+                continue
+            jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
+            numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
+            jour_2 = DEPARTS[DepartsColumnNames.DEP_DATE][index_2]
+            numero_2 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
+            creneau_1 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_1]
+            creneau_2 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_2]
+            add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_FOR", voie, jour_1, numero_1, jour_2, numero_2, creneau_1, creneau_2, MAJORANT)
+
+# Chantier "départ"
+for voie in range(1, int(NB_VOIES[2]) + 1) :
+    for index_1 in DEPARTS.index :
+        for index_2 in DEPARTS.index :
+            if index_1 == index_2:
+                continue
+            jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
+            numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
+            jour_2 = DEPARTS[DepartsColumnNames.DEP_DATE][index_2]
+            numero_2 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
+            creneau_1 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_1]
+            creneau_2 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_2]
+            add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_DEP", voie, jour_1, numero_1, jour_2, numero_2, creneau_1, creneau_2, MAJORANT)
 
 MODEL.update()
 # MODEL.write(f"Modeles/model_{INSTANCE}.lp")
