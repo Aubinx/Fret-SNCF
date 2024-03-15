@@ -1,13 +1,13 @@
 
 from gurobipy import *
-
-from model import DEPARTS, DepartsColumnNames, DATA_DICT
-from lecture_donnees import composition_train_depart
+from util import DepartsColumnNames
+from model import DEPARTS
+from lecture_donnees import DATA_DICT, composition_train_depart
 
 
 def model_jalon2_min_in_obj(model, variables, contraintes):
     """
-    Implementation du minimum pour le premier wagon arriant au chantier FOR
+    Implementation du minimum pour le premier wagon arrivant au chantier FOR
     
     Retourne l'expression Gurobi à MAXIMISER 
     """
