@@ -183,6 +183,9 @@ if not os.path.isfile(INSTANCE_PICKLE_FILE):
 else:
     DATA_DICT = load_from_pickle(INSTANCE_PICKLE_FILE)
 
+ARRIVEES = DATA_DICT[InstanceSheetNames.SHEET_ARRIVEES]
+DEPARTS = DATA_DICT[InstanceSheetNames.SHEET_DEPARTS]
+
 ## FONCTIONS UTILES POUR LA LECTURE DE DONNEES
 def composition_train_depart(data, id_train_depart):
     """
