@@ -54,6 +54,29 @@ if USE_MIN_OBJ:
 else:
     model_jalon2_min_lin(MODEL, VARIABLES, CONTRAINTES)
 
+# Assignation à une voie
+for i in range(len(ORDERED_CHANTIERS)):
+    chantier_id = ORDERED_CHANTIERS[i]
+    if chantier_id == ORDERED_CHANTIERS[0]: # Chantier de réception
+        for index in ARRIVEES.index:
+            jour = ARRIVEES[ArriveesColumnNames.ARR_DATE][index]
+            numero = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+            somme_cvt = 0
+            for voie in range(1, int(NB_VOIES[i]) + 1):
+                somme_cvt += VARIABLES[f"CVT_{chantier_id}_{str(voie)}_{jour}_{numero}"]
+            cstr_name = f"ASSIGNATION_{chantier_id}_{str(voie)}_train_{jour}_{numero}"
+            CONTRAINTES[cstr_name] = MODEL.addConstr(somme_cvt == 1, name=cstr_name)
+    else:
+        for index in DEPARTS.index:
+            jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
+            numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+            somme_cvt = 0
+            for voie in range(1, int(NB_VOIES[i]) + 1):
+                somme_cvt += VARIABLES[f"CVT_{chantier_id}_{str(voie)}_{jour}_{numero}"]
+            cstr_name = f"ASSIGNATION_{chantier_id}_{str(voie)}_train_{jour}_{numero}"
+            CONTRAINTES[cstr_name] = MODEL.addConstr(somme_cvt == 1, name=cstr_name)
+
+
 def add_occu_voies(model, variables, contraintes, chantier_id, voie, jour1, numero1, jour2, numero2, creneau1, creneau2, majorant):
     type_train = "ARR" if chantier_id == "WPY_REC" else "DEP"
     if chantier_id == "WPY_REC":
