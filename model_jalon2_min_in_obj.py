@@ -1,8 +1,7 @@
 
 from gurobipy import *
 from util import DepartsColumnNames
-from model import DEPARTS
-from lecture_donnees import DATA_DICT, composition_train_depart
+from lecture_donnees import DATA_DICT, DEPARTS, composition_train_depart
 
 
 def model_jalon2_min_in_obj(model, variables, contraintes):

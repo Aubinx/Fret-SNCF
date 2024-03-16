@@ -1,8 +1,8 @@
 from gurobipy import *
 
 from util import DepartsColumnNames
-from lecture_donnees import DATA_DICT, composition_train_depart
-from model import DEPARTS, linearise_abs
+from lecture_donnees import DATA_DICT, DEPARTS, composition_train_depart
+from model import linearise_abs
 
 def linearise_min(elt_1, elt_2, model, variables, contraintes):
     """
@@ -10,7 +10,9 @@ def linearise_min(elt_1, elt_2, model, variables, contraintes):
     """
     middle = (elt_1 + elt_2)
     to_abs = elt_1 - elt_2
-    dist = linearise_abs(model, to_abs, f"dist_{elt_1.VarName}_{elt_2.VarName}", variables=variables, contraintes=contraintes)
+    name_el1 = elt_1.VarName.replace("T", "t")
+    name_el2 = elt_2.VarName.replace("T", "t")
+    dist = linearise_abs(model, to_abs, f"dist_{name_el1}_{name_el2}", variables=variables, contraintes=contraintes)
     return (middle - dist) / 2
 
 def linearise_min_list(expr_list, model, variables, contraintes):
@@ -38,7 +40,7 @@ def model_jalon2_min_lin(model, variables, contraintes):
         jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
         numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
         train_arr_necessaires = [variables[f"Train_ARR_{jour_arr}_{numero_arr}_DEB"] for (jour_arr, numero_arr) in composition_train_depart(DATA_DICT, (jour, numero))]
-        min_deb = linearise_min_list(train_arr_necessaires)
+        min_deb = linearise_min_list(train_arr_necessaires, model, variables, contraintes)
         mindeb_var_name = f"min_DEB_{jour}_{numero}"
         variables[mindeb_var_name] = model.addVar(vtype=GRB.INTEGER, lb=0, name=mindeb_var_name)
         contraintes["Constr_"+mindeb_var_name] = model.addConstr(variables[mindeb_var_name] == min_deb, name="Constr_"+mindeb_var_name)
