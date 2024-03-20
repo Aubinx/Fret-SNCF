@@ -1,13 +1,13 @@
+"""Ce module rassemble tous les apports liés au jalon 2"""
 import time
 from gurobipy import *
 from tqdm import tqdm
 from lecture_donnees import (INSTANCE, ARRIVEES, DEPARTS, DATA_DICT,
-                             composition_train_depart_creneau, 
+                             composition_train_depart_creneau,
                              composition_train_arrivee_creneau,
                              indispo_to_intervalle)
 from util import (InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames,
-                  ChantiersColumnNames, TachesColumnNames,
-                  ORDERED_MACHINES, ORDERED_CHANTIERS, TACHES_PAR_CHANTIER)
+                  ChantiersColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS)
 from model import MODEL, VARIABLES, CONTRAINTES, MAJORANT, linearise_abs
 from model_jalon2_min_in_obj import model_jalon2_min_in_obj
 from model_jalon2_min_lin import model_jalon2_min_lin
@@ -90,7 +90,11 @@ for i in tqdm(range(len(ORDERED_CHANTIERS)), desc="Assignation Voie Unique", col
             CONTRAINTES[cstr_name] = MODEL.addConstr(somme_cvt == 1, name=cstr_name)
 
 
-def add_occu_voies(model, variables, contraintes, chantier_id, voie, jour1, numero1, jour2, numero2, creneau1, creneau2, majorant):
+def add_occu_voies(model, variables, contraintes, chantier_id, voie,
+                   jour1, numero1, jour2, numero2, creneau1, creneau2, majorant):
+    """
+    Ajoute toutes les variables et contraintes nécessaires pour vérifier la réutilisation des voies.
+    """
     type_train = "ARR" if chantier_id == "WPY_REC" else "DEP"
     if chantier_id == "WPY_REC":
         train_arrivee_1 = creneau1
@@ -151,7 +155,8 @@ for index_1 in tqdm(ARRIVEES.index, desc="Occupation WPY_REC", colour='#00ff00')
         creneau_depart_2 = DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[index_2]
         if creneau_depart_1 >= creneau_arrivee_2 and creneau_depart_2 >= creneau_arrivee_1 :
             for voie in range(1, int(NB_VOIES[0]) + 1) :
-                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_REC", voie, jour_1, numero_1, jour_2, numero_2, creneau_arrivee_1, creneau_arrivee_2, MAJORANT)
+                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_REC", voie,
+                        jour_1, numero_1, jour_2, numero_2, creneau_arrivee_1, creneau_arrivee_2, MAJORANT)
 
 # Chantiers de "formation" et de "départ"
 for index_1 in tqdm(DEPARTS.index, desc="Occupation WPY_FOR et WPY_DEP", colour='#00ff00') :
@@ -168,9 +173,11 @@ for index_1 in tqdm(DEPARTS.index, desc="Occupation WPY_FOR et WPY_DEP", colour=
         creneau_arrivee_2 = DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[index_2]
         if creneau_depart_1 >= creneau_arrivee_2 and creneau_depart_2 >= creneau_arrivee_1 :
             for voie in range(1, int(NB_VOIES[1]) + 1) :
-                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_FOR", voie, jour_1, numero_1, jour_2, numero_2, creneau_depart_1, creneau_depart_2, MAJORANT)
+                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_FOR", voie,
+                        jour_1, numero_1, jour_2, numero_2, creneau_depart_1, creneau_depart_2, MAJORANT)
             for voie in range(1, int(NB_VOIES[2]) + 1) :
-                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_DEP", voie, jour_1, numero_1, jour_2, numero_2, creneau_depart_1, creneau_depart_2, MAJORANT)
+                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_DEP", voie,
+                        jour_1, numero_1, jour_2, numero_2, creneau_depart_1, creneau_depart_2, MAJORANT)
 
 ## FONCTION OBJECTIF
 # minimiser le nombre de voie max dans le chantier de formation
@@ -192,7 +199,6 @@ for voie in tqdm(range(1, int(NB_VOIES[1]) + 1), desc="Fonction OBJ", colour='#f
     obj_somme_indic += VARIABLES[indic_voie_name]
 
 MODEL.setObjective(obj_somme_indic - eps_obj, GRB.MINIMIZE)
-            
 
 
 
@@ -206,8 +212,8 @@ if __name__=='__main__':
     print("~~Time before optimization :", start_time - overall_start_time)
     print("~~Started optimizing.")
     MODEL.optimize()
-    # model_type = "min_in_obj" if USE_MIN_OBJ else "min_lin"
-    # MODEL.write(f"Modeles/model_{INSTANCE}_jalon2_{model_type}.lp")
+    # MODEL_TYPE = "min_in_obj" if USE_MIN_OBJ else "min_lin"
+    # MODEL.write(f"Modeles/model_{INSTANCE}_jalon2_{MODEL_TYPE}.lp")
     opti_finished_time = time.time()
     print("~~Finished optimizing.\n~~Duration : ", opti_finished_time - start_time)
     print("~ Chargement du modèle et optimisation :", opti_finished_time - overall_start_time)
