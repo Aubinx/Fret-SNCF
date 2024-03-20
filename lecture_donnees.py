@@ -13,7 +13,7 @@ import horaires
 
 # Chemin d'accès du fichier contenant l'instance
 ALL_INSTANCES = ["mini_instance", "instance_WPY_simple", "instance_WPY_realiste_jalon1"]
-INSTANCE = ALL_INSTANCES[0]
+INSTANCE = ALL_INSTANCES[1]
 INSTANCE_DIR = "Instances/" + INSTANCE
 INSTANCE_FILE = INSTANCE_DIR + ".xlsx"
 INSTANCE_PICKLE_FILE = INSTANCE_DIR + ".pkl"
@@ -191,7 +191,7 @@ def composition_train_depart(data, id_train_depart):
     """
     argument : `id_train_depart` est l'identifiant unique du train de départ considéré
     sous la frome du couple (`date`, `numero de train`)
-    Renvoie `related_trains` la liste des trains à l'arrivées
+    Renvoie `related_trains` la liste des trains à l'arrivée
     qui contiennent un wagon faisant partie du train au départ considéré
     """
     related_trains = []
@@ -202,6 +202,44 @@ def composition_train_depart(data, id_train_depart):
             arr_train_id = (row[CorrespondancesColumnNames.CORR_ARR_DATE], row[CorrespondancesColumnNames.CORR_ARR_TRAIN_NUMBER])
             related_trains.append(arr_train_id)
     return related_trains
+
+def composition_train_depart_creneau(data, id_train_depart):
+    trains_depart = composition_train_depart(data, id_train_depart)
+    creneaux = []
+    for index in ARRIVEES.index :
+        jour = ARRIVEES[ArriveesColumnNames.ARR_DATE][index]
+        numero = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+        for jour_obj, numero_obj in trains_depart:
+            if jour == jour_obj and numero == numero_obj :
+                creneaux.append(ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index])
+    return creneaux
+
+def composition_train_arrivee(data, id_train_arrivee):
+    """
+    argument : `id_train_arrivee` est l'identifiant unique du train de départ considéré
+    sous la frome du couple (`date`, `numero de train`)
+    Renvoie `related_trains` la liste des trains au départ
+    qui contiennent un wagon faisant partie du train à l'arrivée considéré
+    """
+    related_trains = []
+    correspondances = data[InstanceSheetNames.SHEET_CORRESPONDANCES]
+    for _, row in correspondances.iterrows():
+        arr_train_id = (row[CorrespondancesColumnNames.CORR_ARR_DATE], row[CorrespondancesColumnNames.CORR_ARR_TRAIN_NUMBER])
+        if arr_train_id == id_train_arrivee:
+            dep_train_id = (row[CorrespondancesColumnNames.CORR_DEP_DATE], row[CorrespondancesColumnNames.CORR_DEP_TRAIN_NUMBER])
+            related_trains.append(dep_train_id)
+    return related_trains
+
+def composition_train_arrivee_creneau(data, id_train_arrivee):
+    trains_arrivee = composition_train_arrivee(data, id_train_arrivee)
+    creneaux = []
+    for index in DEPARTS.index :
+        jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
+        numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+        for jour_obj, numero_obj in trains_arrivee:
+            if jour == jour_obj and numero == numero_obj :
+                creneaux.append(DEPARTS[DepartsColumnNames.DEP_CRENEAU][index])
+    return creneaux
 
 def indispo_to_intervalle(data, target_type, target_id):
     """
