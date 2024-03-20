@@ -3,7 +3,7 @@
 from gurobipy import *
 import time
 from lecture_donnees import (INSTANCE, ARRIVEES, DEPARTS, DATA_DICT,
-                             composition_train_depart, indispo_to_intervalle)
+                             composition_train_depart, composition_train_depart_creneau, indispo_to_intervalle, composition_train_arrivee_creneau)
 from util import (InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames,
                   ChantiersColumnNames, TachesColumnNames,
                   ORDERED_MACHINES, ORDERED_CHANTIERS, TACHES_PAR_CHANTIER)
