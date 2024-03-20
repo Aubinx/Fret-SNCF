@@ -117,7 +117,7 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie, jour1, nume
 
 # Chantier "réception"
 for voie in tqdm(range(1, int(NB_VOIES[0]) + 1), desc="Occupation WPY_REC", colour='#00ff00') :
-    for index_1 in ARRIVEES.index :
+    for index_1 in tqdm(ARRIVEES.index) :
         for index_2 in ARRIVEES.index :
             if index_1 == index_2:
                 continue
@@ -133,7 +133,7 @@ for voie in tqdm(range(1, int(NB_VOIES[0]) + 1), desc="Occupation WPY_REC", colo
 
 # Chantier "formation"
 for voie in tqdm(range(1, int(NB_VOIES[1]) + 1), desc="Occupation WPY_FOR", colour='#00ff00') :
-    for index_1 in DEPARTS.index :
+    for index_1 in tqdm(DEPARTS.index) :
         for index_2 in DEPARTS.index :
             if index_1 == index_2:
                 continue
@@ -149,7 +149,7 @@ for voie in tqdm(range(1, int(NB_VOIES[1]) + 1), desc="Occupation WPY_FOR", colo
 
 # Chantier "départ"
 for voie in tqdm(range(1, int(NB_VOIES[2]) + 1), desc="Occupation WPY_DEP", colour='#00ff00') :
-    for index_1 in DEPARTS.index :
+    for index_1 in tqdm(DEPARTS.index) :
         for index_2 in DEPARTS.index :
             if index_1 == index_2:
                 continue
