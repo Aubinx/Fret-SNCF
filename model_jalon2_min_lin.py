@@ -4,14 +4,25 @@ from util import DepartsColumnNames
 from lecture_donnees import DATA_DICT, DEPARTS, composition_train_depart
 from model import linearise_abs
 
+var_number = 0
+
 def linearise_min(elt_1, elt_2, model, variables, contraintes):
     """
     linéarise l'expression `min(elt_1, elt2)` et renvoie l'expression linéaire associée
     """
+    global var_number
     middle = (elt_1 + elt_2)
     to_abs = elt_1 - elt_2
-    name_el1 = elt_1.VarName.replace("T", "t")
-    name_el2 = elt_2.VarName.replace("T", "t")
+    try:
+        name_el1 = elt_1.VarName.replace("T", "t")
+    except:
+        name_el1 = f"lin_expr_in_linearise_min_{var_number}"
+        var_number += 1
+    try:
+        name_el2 = elt_2.VarName.replace("T", "t")
+    except:
+        name_el2 = f"lin_expr_in_linearise_min_{var_number}"
+        var_number += 1
     dist = linearise_abs(model, to_abs, f"dist_{name_el1}_{name_el2}", variables=variables, contraintes=contraintes)
     return (middle - dist) / 2
 
@@ -27,7 +38,7 @@ def linearise_min_list(expr_list, model, variables, contraintes):
         return expr_list[0]
     # cas général
     current_min_expr = linearise_min(expr_list[0], expr_list[1], model, variables, contraintes)
-    for i in range(2, n-1):
+    for i in range(2, n):
         current_min_expr = linearise_min(current_min_expr, expr_list[i], model, variables, contraintes)
     return current_min_expr
 
