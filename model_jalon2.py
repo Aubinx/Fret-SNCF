@@ -118,13 +118,13 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie, jour1, nume
 # Chantier "réception"
 for voie in tqdm(range(1, int(NB_VOIES[0]) + 1), desc="Occupation WPY_REC", colour='#00ff00') :
     for index_1 in tqdm(ARRIVEES.index) :
+        jour_1 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_1]
+        numero_1 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_1]
+        creneau_1 = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index_1]
+        creneau_depart_1 = max(composition_train_arrivee_creneau(DATA_DICT, (jour_1, numero_1)))
         for index_2 in ARRIVEES.index :
             if index_1 == index_2:
                 continue
-            jour_1 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_1]
-            numero_1 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_1]
-            creneau_1 = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index_1]
-            creneau_depart_1 = max(composition_train_arrivee_creneau(DATA_DICT, (jour_1, numero_1)))
             jour_2 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_2]
             numero_2 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_2]
             creneau_2 = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index_2]
@@ -134,13 +134,13 @@ for voie in tqdm(range(1, int(NB_VOIES[0]) + 1), desc="Occupation WPY_REC", colo
 # Chantier "formation"
 for voie in tqdm(range(1, int(NB_VOIES[1]) + 1), desc="Occupation WPY_FOR", colour='#00ff00') :
     for index_1 in tqdm(DEPARTS.index) :
+        jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
+        numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
+        creneau_1 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_1]
+        creneau_arrivee_1 = min(composition_train_depart_creneau(DATA_DICT, (jour_1, numero_1)))
         for index_2 in DEPARTS.index :
             if index_1 == index_2:
                 continue
-            jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
-            numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
-            creneau_1 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_1]
-            creneau_arrivee_1 = min(composition_train_depart_creneau(DATA_DICT, (jour_1, numero_1)))
             jour_2 = DEPARTS[DepartsColumnNames.DEP_DATE][index_2]
             numero_2 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
             creneau_2 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_2]
@@ -150,13 +150,13 @@ for voie in tqdm(range(1, int(NB_VOIES[1]) + 1), desc="Occupation WPY_FOR", colo
 # Chantier "départ"
 for voie in tqdm(range(1, int(NB_VOIES[2]) + 1), desc="Occupation WPY_DEP", colour='#00ff00') :
     for index_1 in tqdm(DEPARTS.index) :
+        jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
+        numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
+        creneau_1 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_1]
+        creneau_arrivee_1 = min(composition_train_depart_creneau(DATA_DICT, (jour_1, numero_1)))
         for index_2 in DEPARTS.index :
             if index_1 == index_2:
                 continue
-            jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
-            numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
-            creneau_1 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_1]
-            creneau_arrivee_1 = min(composition_train_depart_creneau(DATA_DICT, (jour_1, numero_1)))
             jour_2 = DEPARTS[DepartsColumnNames.DEP_DATE][index_2]
             numero_2 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
             creneau_2 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_2]
