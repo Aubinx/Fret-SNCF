@@ -129,15 +129,15 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie,
 # Initialisation des dictionnaires DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE et DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART
 
 DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE = {}
-for index in tqdm(ARRIVEES.index, desc="Dictionnaire DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE") :
-    jour = ARRIVEES[ArriveesColumnNames.ARR_DATE][index]
-    numero = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+for index in tqdm(ARRIVEES.index, desc="Dict MAX_DEPART_DU_TRAIN_ARRIVEE", colour="#0088ff") :
+    jour = ARRIVEES_DATE[index]
+    numero = ARRIVEES_TR_NB[index]
     DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[index] = max(composition_train_arrivee_creneau(DATA_DICT, (jour, numero)))  
 
 DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART = {}
-for index in tqdm(DEPARTS.index, desc="Dictionnaire DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART") :
-    jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
-    numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+for index in tqdm(DEPARTS.index, desc="Dict MIN_ARRIVEE_DU_TRAIN_DEPART", colour="#0088ff") :
+    jour = DEPARTS_DATE[index]
+    numero = DEPARTS_TR_NB[index]
     DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[index] = min(composition_train_depart_creneau(DATA_DICT, (jour, numero)))
 
 # Chantier "réception"
@@ -212,7 +212,7 @@ if __name__=='__main__':
     print("~~Time before optimization :", start_time - overall_start_time)
     print("~~Started optimizing.")
     MODEL.optimize()
-    # MODEL_TYPE = "min_in_obj" if USE_MIN_OBJ else "min_lin"
+    MODEL_TYPE = "min_in_obj" if USE_MIN_OBJ else "min_lin"
     # MODEL.write(f"Modeles/model_{INSTANCE}_jalon2_{MODEL_TYPE}.lp")
     opti_finished_time = time.time()
     print("~~Finished optimizing.\n~~Duration : ", opti_finished_time - start_time)
@@ -229,3 +229,4 @@ if __name__=='__main__':
     print("~ Affichage du résultat : ", time.time() - opti_finished_time)
 
     print("## Valeur de l'objectif : ", MODEL.ObjVal + eps_obj.getValue())
+    MODEL.write(f"Outputs/out_{INSTANCE}_jalon2_{MODEL_TYPE}.sol")
