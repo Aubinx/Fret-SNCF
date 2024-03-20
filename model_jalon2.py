@@ -1,7 +1,10 @@
 import time
 from gurobipy import *
+from tqdm import tqdm
 from lecture_donnees import (INSTANCE, ARRIVEES, DEPARTS, DATA_DICT,
-                             composition_train_depart, indispo_to_intervalle)
+                             composition_train_depart_creneau, 
+                             composition_train_arrivee_creneau,
+                             indispo_to_intervalle)
 from util import (InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames,
                   ChantiersColumnNames, TachesColumnNames,
                   ORDERED_MACHINES, ORDERED_CHANTIERS, TACHES_PAR_CHANTIER)
@@ -13,7 +16,9 @@ import display_tools.display_by_train as dis_agenda
 
 overall_start_time = time.time()
 USE_MIN_OBJ = True
+EPSILON = 1/4
 
+## VARIABLES
 # Variables de décision concernant l'occupation des voies (jalon 2)
 NB_VOIES = DATA_DICT[InstanceSheetNames.SHEET_CHANTIERS][ChantiersColumnNames.CHANTIER_CAPA_VOIES]
 # Variables binaires d'occupation des voies pour chaque chantier
@@ -47,15 +52,16 @@ for index in DEPARTS.index:
             vtype = GRB.BINARY,
         )
 
+## CONTRAINTES
 # Contraintes d'occupation des voies
-eps_obj = 0
+eps_obj = LinExpr(0)
 if USE_MIN_OBJ:
     eps_obj = model_jalon2_min_in_obj(MODEL, VARIABLES, CONTRAINTES)
 else:
     model_jalon2_min_lin(MODEL, VARIABLES, CONTRAINTES)
 
 # Assignation à une voie
-for i in range(len(ORDERED_CHANTIERS)):
+for i in tqdm(range(len(ORDERED_CHANTIERS)), desc="Assignation Voie Unique", colour='#ffffff'):
     chantier_id = ORDERED_CHANTIERS[i]
     if chantier_id == ORDERED_CHANTIERS[0]: # Chantier de réception
         for index in ARRIVEES.index:
@@ -110,7 +116,7 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie, jour1, nume
     contraintes[cstr_name] = model.addConstr(lin_abs >= train_depart_2 - train_arrivee_2 + majorant * (cvt_2 + cvt_1 - 2), name=cstr_name)
 
 # Chantier "réception"
-for voie in range(1, int(NB_VOIES[0]) + 1) :
+for voie in tqdm(range(1, int(NB_VOIES[0]) + 1), desc="Occupation WPY_REC", colour='#00ff00') :
     for index_1 in ARRIVEES.index :
         for index_2 in ARRIVEES.index :
             if index_1 == index_2:
@@ -118,13 +124,15 @@ for voie in range(1, int(NB_VOIES[0]) + 1) :
             jour_1 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_1]
             numero_1 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_1]
             creneau_1 = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index_1]
+            creneau_depart_1 = max(composition_train_arrivee_creneau(DATA_DICT, (jour_1, numero_1)))
             jour_2 = ARRIVEES[ArriveesColumnNames.ARR_DATE][index_2]
             numero_2 = ARRIVEES[ArriveesColumnNames.ARR_TRAIN_NUMBER][index_2]
             creneau_2 = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU][index_2]
-            add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_REC", voie, jour_1, numero_1, jour_2, numero_2, creneau_1, creneau_2, MAJORANT)
+            if creneau_depart_1 >= creneau_2 :
+                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_REC", voie, jour_1, numero_1, jour_2, numero_2, creneau_1, creneau_2, MAJORANT)
 
 # Chantier "formation"
-for voie in range(1, int(NB_VOIES[1]) + 1) :
+for voie in tqdm(range(1, int(NB_VOIES[1]) + 1), desc="Occupation WPY_FOR", colour='#00ff00') :
     for index_1 in DEPARTS.index :
         for index_2 in DEPARTS.index :
             if index_1 == index_2:
@@ -132,13 +140,15 @@ for voie in range(1, int(NB_VOIES[1]) + 1) :
             jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
             numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
             creneau_1 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_1]
+            creneau_arrivee_1 = min(composition_train_depart_creneau(DATA_DICT, (jour_1, numero_1)))
             jour_2 = DEPARTS[DepartsColumnNames.DEP_DATE][index_2]
             numero_2 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
             creneau_2 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_2]
-            add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_FOR", voie, jour_1, numero_1, jour_2, numero_2, creneau_1, creneau_2, MAJORANT)
+            if creneau_arrivee_1 <= creneau_2 :
+                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_FOR", voie, jour_1, numero_1, jour_2, numero_2, creneau_1, creneau_2, MAJORANT)
 
 # Chantier "départ"
-for voie in range(1, int(NB_VOIES[2]) + 1) :
+for voie in tqdm(range(1, int(NB_VOIES[2]) + 1), desc="Occupation WPY_DEP", colour='#00ff00') :
     for index_1 in DEPARTS.index :
         for index_2 in DEPARTS.index :
             if index_1 == index_2:
@@ -146,10 +156,34 @@ for voie in range(1, int(NB_VOIES[2]) + 1) :
             jour_1 = DEPARTS[DepartsColumnNames.DEP_DATE][index_1]
             numero_1 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_1]
             creneau_1 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_1]
+            creneau_arrivee_1 = min(composition_train_depart_creneau(DATA_DICT, (jour_1, numero_1)))
             jour_2 = DEPARTS[DepartsColumnNames.DEP_DATE][index_2]
             numero_2 = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index_2]
             creneau_2 = DEPARTS[DepartsColumnNames.DEP_CRENEAU][index_2]
-            add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_DEP", voie, jour_1, numero_1, jour_2, numero_2, creneau_1, creneau_2, MAJORANT)
+            if creneau_arrivee_1 <= creneau_2 :
+                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_DEP", voie, jour_1, numero_1, jour_2, numero_2, creneau_1, creneau_2, MAJORANT)
+
+## FONCTION OBJECTIF
+# minimiser le nombre de voie max dans le chantier de formation
+obj_somme_indic = 0
+for voie in tqdm(range(1, int(NB_VOIES[1]) + 1), desc="Fonction OBJ", colour='#ff8800') :
+    indic_voie_name = f"indicatrice_FOR_voie{voie}_occupee"
+    indic_voie_constr = f"Constr_indic_FOR_voie{voie}"
+    somme_cvt_indic = -1
+    for index in DEPARTS.index :
+        jour = DEPARTS[DepartsColumnNames.DEP_DATE][index]
+        numero = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+        somme_cvt_indic += VARIABLES[f"CVT_WPY_FOR_{voie}_{jour}_{numero}"]
+    VARIABLES[indic_voie_name] = MODEL.addVar(vtype=GRB.BINARY,
+                                              name=indic_voie_name)
+    CONTRAINTES[indic_voie_constr+"_1"] = MODEL.addConstr(MAJORANT * VARIABLES[indic_voie_name] >= somme_cvt_indic + EPSILON,
+                                                          name=indic_voie_constr+"_1")
+    CONTRAINTES[indic_voie_constr+"_2"] = MODEL.addConstr(MAJORANT * (VARIABLES[indic_voie_name] - 1) <= somme_cvt_indic + EPSILON,
+                                                          name=indic_voie_constr+"_2")
+    obj_somme_indic += VARIABLES[indic_voie_name]
+
+MODEL.setObjective(obj_somme_indic - eps_obj, GRB.MINIMIZE)
+            
 
 
 
@@ -159,13 +193,12 @@ for voie in range(1, int(NB_VOIES[2]) + 1) :
 
 if __name__=='__main__':
     MODEL.update()
-    MODEL.setObjective(-eps_obj, GRB.MINIMIZE)
     start_time = time.time()
     print("~~Time before optimization :", start_time - overall_start_time)
     print("~~Started optimizing.")
     MODEL.optimize()
-    model_type = "min_in_obj" if USE_MIN_OBJ else "min_lin"
-    MODEL.write(f"Modeles/model_{INSTANCE}_jalon2_{model_type}.lp")
+    # model_type = "min_in_obj" if USE_MIN_OBJ else "min_lin"
+    # MODEL.write(f"Modeles/model_{INSTANCE}_jalon2_{model_type}.lp")
     opti_finished_time = time.time()
     print("~~Finished optimizing.\n~~Duration : ", opti_finished_time - start_time)
     print("~ Chargement du modèle et optimisation :", opti_finished_time - overall_start_time)
@@ -179,3 +212,5 @@ if __name__=='__main__':
     dis_agenda.full_process(VARIABLES, (earliest_arrival, latest_departure),
                             ARRIVEES, DEPARTS, indispo)
     print("~ Affichage du résultat : ", time.time() - opti_finished_time)
+
+    print("## Valeur de l'objectif : ", MODEL.ObjVal + eps_obj.getValue())
