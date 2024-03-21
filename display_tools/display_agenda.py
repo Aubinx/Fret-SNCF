@@ -7,7 +7,7 @@ from display_tools.color import generate_colors
 import horaires
 from util import ArriveesColumnNames, DepartsColumnNames
 
-# TOOLS 
+# TOOLS
 
 def darker_color_tool(color, factor=.6):
     """ Darkens a color with a factor"""
@@ -18,7 +18,7 @@ def darker_color_tool(color, factor=.6):
     b_assombri = int(_b * factor)
     return f"#{r_assombri:02x}{g_assombri:02x}{b_assombri:02x}"
 
-def add_task_to_agenda(fig, start_time, end_time, names, color, place, ref_day):
+def add_task_to_agenda(fig, start_time, end_time, names, color, ref_day):
     """ Add a task to the displayed agenda """
     delta_day = start_time.replace(hour=0, minute=0)-ref_day.replace(hour=0, minute=0)
     delta_day = delta_day.days
@@ -30,26 +30,30 @@ def add_task_to_agenda(fig, start_time, end_time, names, color, place, ref_day):
         # We need to split the event in multiple ones
         # The event is splited into the one on the first day and the rest
         new_end = start_time.replace(hour=23, minute=59)
-        add_task_to_agenda(fig, start_time, new_end, names, color, place, ref_day)
+        add_task_to_agenda(fig, start_time, new_end, names, color, ref_day)
         next_task_start = start_time.replace(hour=0, minute=0) + timedelta(days=1)
-        add_task_to_agenda(fig, next_task_start, end_time, names, color, place, ref_day)
+        add_task_to_agenda(fig, next_task_start, end_time, names, color, ref_day)
     else:
         # Start
         start = ref_day.replace(hour=start_time.hour, minute=start_time.minute)
         # End
         end = ref_day.replace(hour=end_time.hour, minute=end_time.minute)
-        level, size = place
-        delta_day = delta_day+(level-1)/size
+
         train, task_name = names
+        assert task_name in ('DEB', 'FOR', 'DEG'), f'Task was named {task_name}'
+        possible_levels = ('DEB', 'FOR', 'DEG')
+        level = possible_levels.index(task_name)
+        delta_day += level/3
         fig.add_trace(go.Scatter(
                 x=[start, end, end, start, start],
-                y=[delta_day, delta_day, delta_day+1/size, delta_day+1/size, delta_day],
+                y=[delta_day, delta_day, delta_day+1/3, delta_day+1/3, delta_day],
                 fill='toself',
+                mode='lines',
                 line={'color':color},
                 name=train))
         difference = end - start
         _x = start + difference / 2
-        _y= delta_day+.5/size
+        _y= delta_day+1/6
         couleur_assombrie = darker_color_tool(color)
         fig.add_annotation(
             x=_x, y=_y, text=task_name, showarrow=False,
@@ -75,30 +79,12 @@ def generate_empty_agenda(start, end, tasks, color_codes):
                                     fill='toself',
                                     line={'color':'white'},
                                     hoverinfo='skip'))
-    # Verification des tâches en parallèle
-    overlap_level = {}
-    number_of_overlap = {}
-    for i, task in enumerate(tasks):
-        overlap_level[task]=1
-        number_of_overlap[task]=1
-        if i==0:
-            continue
-        for other_task in tasks[:i]:
-            _, _, date, lenght = task
-            t11, t12 = date, date+lenght
-            _, _, date, lenght = other_task
-            t21, t22 = date, date+lenght
-            if t21 < t11 < t22 or t21 < t12 < t22:
-                overlap_level[task]=max(overlap_level[task],  overlap_level[other_task]+1)
-                number_of_overlap[task]+=1
-                number_of_overlap[other_task]+=1
 
     # Ajout de différentes tâches
     for task in tasks:
         train, tache, date, lenght = task
         color = color_codes[train]
-        place = (overlap_level[task], number_of_overlap[task])
-        add_task_to_agenda(fig, date, date+lenght, (train, tache), color, place, start)
+        add_task_to_agenda(fig, date, date+lenght, (train, tache), color, start)
 
     # Personnalisation de la mise en page
     liste_jours = [start+timedelta(days=i) for i in range(delta_days)]
@@ -193,9 +179,12 @@ def import_arrival_from_model(fig, arrival_pandas, start_date, color_codes):
     for index in arrival_pandas.index :
         jour = arrival_pandas[ArriveesColumnNames.ARR_DATE][index]
         numero = arrival_pandas[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
-        creneau_arrivee, delta_day = date_code_to_date_time_and_day(horaires.entier_vers_triplet(int(arrival_pandas[ArriveesColumnNames.ARR_CRENEAU][index])))
+        creneau_arrivee, delta_day = date_code_to_date_time_and_day(
+            horaires.entier_vers_triplet(int(arrival_pandas[ArriveesColumnNames.ARR_CRENEAU][index])
+                                         )
+            )
         str_train = f"Train_ARR_{numero}_{jour}"
-      
+
         color = darker_color_tool(color_codes[f"Train_ARR_{jour}_{numero}"], factor=.8)
         fig.add_trace(go.Scatter(
             x=[creneau_arrivee, creneau_arrivee],
@@ -216,7 +205,11 @@ def import_departures_from_model(fig, departures_pandas, start_date, color_codes
     for index in departures_pandas.index :
         jour = departures_pandas[DepartsColumnNames.DEP_DATE][index]
         numero = departures_pandas[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
-        creneau_dep, delta_day = date_code_to_date_time_and_day(horaires.entier_vers_triplet(int(departures_pandas[DepartsColumnNames.DEP_CRENEAU][index])))
+        creneau_dep, delta_day = date_code_to_date_time_and_day(
+            horaires.entier_vers_triplet(
+                int(departures_pandas[DepartsColumnNames.DEP_CRENEAU][index])
+                                         )
+            )
         str_train = f"Train_DEP_{numero}_{jour}"
         color = darker_color_tool(color_codes[f"Train_DEP_{jour}_{numero}"], factor=.7)
         fig.add_trace(go.Scatter(
@@ -228,12 +221,25 @@ def import_departures_from_model(fig, departures_pandas, start_date, color_codes
             hoverinfo="name"  # Show the name when hovering over the line
         ))
 
+def displays_machine_indisponibilities(fig, indisponibilities, start_date):
+    """ Displays a grey rectangle on indisponibilities """
+    def date_code_to_date_time(date_tuple):
+        day, hour, minute = date_tuple
+        return start_date.replace(hour=hour, minute=minute) + timedelta(days=day-1)
 
-def full_process(solved_variables, extrema, arrival_pandas, departures_pandas):
+    for indispo in indisponibilities:
+        machine, t_min, t_max = indispo
+        date_min = date_code_to_date_time(horaires.entier_vers_triplet(int(t_min)))
+        date_max = date_code_to_date_time(horaires.entier_vers_triplet(int(t_max)))
+        add_task_to_agenda(fig, date_min, date_max, ('Indisponibilité', machine), '#AAAAAA', start_date)
+
+    
+def full_process(solved_variables, extrema, arrival_pandas, departures_pandas, indisponibilities):
     """ Displays the agenda with the whole data """
     tasks, color_codes, (start_date, end_date) = import_tasks_from_model(
                             solved_variables, extrema)
     fig = generate_empty_agenda(start_date, end_date, tasks, color_codes)
     import_arrival_from_model(fig, arrival_pandas, start_date, color_codes)
     import_departures_from_model(fig, departures_pandas, start_date, color_codes)
+    displays_machine_indisponibilities(fig, indisponibilities, start_date)
     fig.show()
