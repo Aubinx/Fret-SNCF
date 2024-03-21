@@ -12,7 +12,8 @@ from model import MODEL, VARIABLES, CONTRAINTES, MAJORANT, linearise_abs
 from model_jalon2_min_in_obj import model_jalon2_min_in_obj
 from model_jalon2_min_lin import model_jalon2_min_lin
 
-import display_tools.display_by_train as dis_agenda
+import display_tools.display_agenda as dis_agenda
+import display_tools.compute_stats as dis_tracks
 
 overall_start_time = time.time()
 USE_MIN_OBJ = True
@@ -226,6 +227,8 @@ if __name__=='__main__':
     latest_departure = max(DEPARTS["JDEP"])
     dis_agenda.full_process(VARIABLES, (earliest_arrival, latest_departure),
                             ARRIVEES, DEPARTS, indispo)
+    dis_tracks.full_process_stats((earliest_arrival, latest_departure), VARIABLES,
+                                  ARRIVEES, DEPARTS, NB_VOIES)
     print("~ Affichage du résultat : ", time.time() - opti_finished_time)
 
     print("## Valeur de l'objectif : ", MODEL.ObjVal + eps_obj.getValue())

@@ -8,7 +8,7 @@ from util import (InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames,
                   ChantiersColumnNames, TachesColumnNames,
                   ORDERED_MACHINES, ORDERED_CHANTIERS, TACHES_PAR_CHANTIER)
 
-import display_tools.display_by_train as dis_agenda
+import display_tools.display_agenda as dis_agenda
 
 overall_start_time = time.time()
 
