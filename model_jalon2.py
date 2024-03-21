@@ -127,7 +127,7 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie,
     to_abs = 2 * train_depart_1 - train_arrivee_2 - train_depart_2
     name_new_var = f"CVT_sortie_{chantier_id}_{voie}_{jour1}_{numero1}_{jour2}_{numero2}"
     cstr_name = "Constr_"+name_new_var
-    if chantier_id == "WPY_REC" and creneau1 >= creneau2 : #to_abs => 0
+    if chantier_id == "WPY_DEP" and creneau1 >= creneau2 : #to_abs => 0
         lin_abs = to_abs
     else :
         lin_abs = linearise_abs(model, to_abs, name_new_var, variables, contraintes, majorant)
