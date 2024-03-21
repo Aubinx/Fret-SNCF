@@ -16,7 +16,7 @@ import display_tools.display_agenda as dis_agenda
 import display_tools.compute_stats as dis_tracks
 
 overall_start_time = time.time()
-USE_MIN_OBJ = True
+USE_MIN_OBJ = False
 EPSILON = 1/4
 
 ARRIVEES_DATE = ARRIVEES[ArriveesColumnNames.ARR_DATE]
@@ -105,8 +105,8 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie,
     elif chantier_id == "WPY_FOR":
         train_arrivee_1 = variables[f"min_DEB_{jour1}_{numero1}"]
         train_arrivee_2 = variables[f"min_DEB_{jour2}_{numero2}"]
-        train_depart_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"]
-        train_depart_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"]
+        train_depart_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"] + 15
+        train_depart_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"] + 15
     elif chantier_id == "WPY_DEP":
         train_arrivee_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"]
         train_arrivee_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"]
@@ -128,7 +128,6 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie,
     contraintes[cstr_name] = model.addConstr(lin_abs >= train_depart_2 - train_arrivee_2 + majorant * (cvt_2 + cvt_1 - 2), name=cstr_name)
 
 # Initialisation des dictionnaires DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE et DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART
-
 DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE = {}
 for index in tqdm(ARRIVEES.index, desc="Dict MAX_DEPART_DU_TRAIN_ARRIVEE", colour="#0088ff") :
     jour = ARRIVEES_DATE[index]
@@ -200,7 +199,7 @@ for voie in tqdm(range(1, int(NB_VOIES[1]) + 1), desc="Fonction OBJ", colour='#f
     obj_somme_indic += VARIABLES[indic_voie_name]
 
 MODEL.setObjective(obj_somme_indic - eps_obj, GRB.MINIMIZE)
-
+# MODEL.setObjective(- eps_obj, GRB.MINIMIZE)
 
 
 # MODEL.display()
