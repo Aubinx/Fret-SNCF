@@ -105,8 +105,8 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie,
     elif chantier_id == "WPY_FOR":
         train_arrivee_1 = variables[f"min_DEB_{jour1}_{numero1}"]
         train_arrivee_2 = variables[f"min_DEB_{jour2}_{numero2}"]
-        train_depart_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"] + 15
-        train_depart_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"] + 15
+        train_depart_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"]
+        train_depart_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"]
     elif chantier_id == "WPY_DEP":
         train_arrivee_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"]
         train_arrivee_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"]
@@ -118,13 +118,19 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie,
     to_abs = 2 * train_arrivee_1 - train_arrivee_2 - train_depart_2
     name_new_var = f"CVT_entree_{chantier_id}_{voie}_{jour1}_{numero1}_{jour2}_{numero2}"
     cstr_name = "Constr_"+name_new_var
-    lin_abs = linearise_abs(model, to_abs, name_new_var, variables, contraintes, majorant)
+    if chantier_id == "WPY_REC" and creneau1 <= creneau2 : #to_abs <= 0
+        lin_abs = -1 * to_abs
+    else :
+        lin_abs = linearise_abs(model, to_abs, name_new_var, variables, contraintes, majorant)
     contraintes[cstr_name] = model.addConstr(lin_abs >= train_depart_2 - train_arrivee_2 + majorant * (cvt_2 + cvt_1 - 2), name=cstr_name)
     # Contrainte 2
     to_abs = 2 * train_depart_1 - train_arrivee_2 - train_depart_2
     name_new_var = f"CVT_sortie_{chantier_id}_{voie}_{jour1}_{numero1}_{jour2}_{numero2}"
     cstr_name = "Constr_"+name_new_var
-    lin_abs = linearise_abs(model, to_abs, name_new_var, variables, contraintes, majorant)
+    if chantier_id == "WPY_REC" and creneau1 >= creneau2 : #to_abs => 0
+        lin_abs = to_abs
+    else :
+        lin_abs = linearise_abs(model, to_abs, name_new_var, variables, contraintes, majorant)
     contraintes[cstr_name] = model.addConstr(lin_abs >= train_depart_2 - train_arrivee_2 + majorant * (cvt_2 + cvt_1 - 2), name=cstr_name)
 
 # Initialisation des dictionnaires DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE et DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART
