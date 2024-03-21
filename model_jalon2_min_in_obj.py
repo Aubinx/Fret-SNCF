@@ -1,4 +1,7 @@
-
+"""
+Implementation de la contrainte d'occupation des voies au chantier de formation
+en ajoutant le minimum à la fonction objectif
+"""
 from gurobipy import *
 from util import DepartsColumnNames
 from lecture_donnees import DATA_DICT, DEPARTS, composition_train_depart
@@ -26,7 +29,6 @@ def model_jalon2_min_in_obj(model, variables, contraintes):
             date, id_name = related_train
             contraintes[f"min_DEB_depart_{jour}_{numero}_arrivee_{date}_{id_name}_MINIMUM"] = model.addConstr(
                 variables[f"min_DEB_{jour}_{numero}"] <= variables[f"Train_ARR_{date}_{id_name}_DEB"],
-                name = f"min_DEB_depart_{jour}_{numero}_arrivee_{date}_{id_name}_MINIMUM"
-        )
+                name = f"min_DEB_depart_{jour}_{numero}_arrivee_{date}_{id_name}_MINIMUM")
 
     return epsilon_minimum

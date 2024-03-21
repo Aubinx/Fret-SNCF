@@ -3,7 +3,7 @@
 from gurobipy import *
 import time
 from lecture_donnees import (INSTANCE, ARRIVEES, DEPARTS, DATA_DICT,
-                             composition_train_depart, indispo_to_intervalle)
+                             composition_train_depart, composition_train_depart_creneau, indispo_to_intervalle, composition_train_arrivee_creneau)
 from util import (InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames,
                   ChantiersColumnNames, TachesColumnNames,
                   ORDERED_MACHINES, ORDERED_CHANTIERS, TACHES_PAR_CHANTIER)
@@ -26,25 +26,31 @@ def linearise_abs(model : Model, expr_var : LinExpr, var_name : str, variables=V
     """
     assert var_name not in VARIABLES.keys(), f"Nom de variable déjà présent dans {VARIABLES}"
     # Créer la variable binaire indicatrice et les contraintes associées
-    delta = model.addVar(name=f"linabs_binary_{var_name}", vtype=GRB.BINARY)
-    cb1 = model.addConstr(majorant * delta >= expr_var, name=f"linabs_ConstrBinary1_{var_name}")
-    cb2 = model.addConstr(majorant * (delta - 1) <= expr_var, name=f"linabs_ConstrBinary2_{var_name}")
+    delta_name = f"linabs_binary_{var_name}"
+    cb1_name = f"linabs_ConstrBinary1_{var_name}"
+    cb2_name = f"linabs_ConstrBinary2_{var_name}"
+    delta = model.addVar(name=delta_name, vtype=GRB.BINARY)
+    cb1 = model.addConstr(majorant * delta >= expr_var, name=cb1_name)
+    cb2 = model.addConstr(majorant * (delta - 1) <= expr_var, name=cb2_name)
 
     # Créer la nouvelle variable entière et les contraintes associées
-    prod = model.addVar(name=f"linabs_integer_{var_name}", vtype=GRB.INTEGER, lb=0)
-    ci1 = model.addConstr(prod >= expr_var, name=f"linabs_ConstrInteger1_{var_name}")
-    ci2 = model.addConstr(prod <= majorant * delta, name=f"linabs_ConstrInteger2_{var_name}")
-    ci3 = model.addConstr(prod <= expr_var - majorant * (delta - 1), name=f"linabs_ConstrInteger3_{var_name}")
+    prod_name = f"linabs_integer_{var_name}"
+    ci1_name = f"linabs_ConstrInteger1_{var_name}"
+    ci2_name = f"linabs_ConstrInteger2_{var_name}"
+    ci3_name = f"linabs_ConstrInteger3_{var_name}"
+    prod = model.addVar(name=prod_name, vtype=GRB.INTEGER, lb=0)
+    ci1 = model.addConstr(prod >= expr_var, name=ci1_name)
+    ci2 = model.addConstr(prod <= majorant * delta, name=ci2_name)
+    ci3 = model.addConstr(prod <= expr_var - majorant * (delta - 1), name=ci3_name)
 
     # Mettre à jour les dictionnaires des variables et contraintes
-    model.update()
-    variables[delta.VarName] = delta
-    variables[prod.VarName] = prod
-    contraintes[cb1.ConstrName] = cb1
-    contraintes[cb2.ConstrName] = cb2
-    contraintes[ci1.ConstrName] = ci1
-    contraintes[ci2.ConstrName] = ci2
-    contraintes[ci3.ConstrName] = ci3
+    variables[delta_name] = delta
+    variables[prod_name] = prod
+    contraintes[cb1_name] = cb1
+    contraintes[cb2_name] = cb2
+    contraintes[ci1_name] = ci1
+    contraintes[ci2_name] = ci2
+    contraintes[ci3_name] = ci3
     linear_abs = LinExpr(2 * prod - expr_var)
     return linear_abs
 
