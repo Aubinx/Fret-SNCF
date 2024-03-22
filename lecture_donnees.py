@@ -201,7 +201,7 @@ def composition_train_depart(data, id_train_depart):
         if dep_train_id == id_train_depart:
             arr_train_id = (row[CorrespondancesColumnNames.CORR_ARR_DATE], row[CorrespondancesColumnNames.CORR_ARR_TRAIN_NUMBER])
             related_trains.append(arr_train_id)
-    return related_trains
+    return list(set(related_trains))
 
 def composition_train_depart_creneau(data, id_train_depart):
     trains_depart = composition_train_depart(data, id_train_depart)
@@ -228,7 +228,7 @@ def composition_train_arrivee(data, id_train_arrivee):
         if arr_train_id == id_train_arrivee:
             dep_train_id = (row[CorrespondancesColumnNames.CORR_DEP_DATE], row[CorrespondancesColumnNames.CORR_DEP_TRAIN_NUMBER])
             related_trains.append(dep_train_id)
-    return related_trains
+    return list(set(related_trains))
 
 def composition_train_arrivee_creneau(data, id_train_arrivee):
     trains_arrivee = composition_train_arrivee(data, id_train_arrivee)
