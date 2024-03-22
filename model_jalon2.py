@@ -133,6 +133,50 @@ def add_occu_voies(model, variables, contraintes, chantier_id, voie,
         lin_abs = linearise_abs(model, to_abs, name_new_var, variables, contraintes, majorant)
     contraintes[cstr_name] = model.addConstr(lin_abs >= train_depart_2 - train_arrivee_2 + majorant * (cvt_2 + cvt_1 - 2), name=cstr_name)
 
+def add_occu_voies_non_abs(model: Model, variables: dict, contraintes: dict, chantier_id: str, voie: str,
+                   jour1: str, numero1: str, jour2: str, numero2: str, creneau1: int, creneau2: int,
+                   majorant: float=MAJORANT, epsilon: float=EPSILON):
+    """
+    Ajoute toutes les variables et contraintes nécessaires pour vérifier la réutilisation des voies.
+    Version sans linéarisation de valeur absolue.
+    """
+    type_train = "ARR" if chantier_id == "WPY_REC" else "DEP"
+    if chantier_id == "WPY_REC":
+        train_arrivee_1 = creneau1
+        train_arrivee_2 = creneau2
+        train_depart_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEB"] + 15
+        train_depart_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEB"] + 15
+    elif chantier_id == "WPY_FOR":
+        train_arrivee_1 = variables[f"min_DEB_{jour1}_{numero1}"]
+        train_arrivee_2 = variables[f"min_DEB_{jour2}_{numero2}"]
+        train_depart_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"]
+        train_depart_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"]
+    elif chantier_id == "WPY_DEP":
+        train_arrivee_1 = variables[f"Train_{type_train}_{jour1}_{numero1}_DEG"]
+        train_arrivee_2 = variables[f"Train_{type_train}_{jour2}_{numero2}_DEG"]
+        train_depart_1 = creneau1
+        train_depart_2 = creneau2
+    cvt_1 = variables[f"CVT_{chantier_id}_{voie}_{jour1}_{numero1}"]
+    cvt_2 = variables[f"CVT_{chantier_id}_{voie}_{jour2}_{numero2}"]
+    # var binaire delta_arr2_dep1
+    delta1_name = f"delta_Di_Aj_{chantier_id}_{voie}_{jour1}_{numero1}_{jour2}_{numero2}"
+    variables[delta1_name] = model.addVar(vtype=GRB.BINARY, name=delta1_name)
+    contraintes["Constr1"+delta1_name] = model.addConstr(majorant * (1 - variables[delta1_name]) >= train_arrivee_2 - train_depart_1 + epsilon,
+                                                         name="Constr1"+delta1_name)
+    contraintes["Constr2"+delta1_name] = model.addConstr(- majorant * variables[delta1_name] <= train_arrivee_2 - train_depart_1 + epsilon,
+                                                         name="Constr2"+delta1_name)
+    # var binaire delta_arr1_dep2
+    delta2_name = f"delta_Dj_Ai_{chantier_id}_{voie}_{jour1}_{numero1}_{jour2}_{numero2}"
+    variables[delta2_name] = model.addVar(vtype=GRB.BINARY, name=delta2_name)
+    contraintes["Constr1"+delta2_name] = model.addConstr(majorant * (1 - variables[delta2_name]) >= train_depart_2 - train_arrivee_1 + epsilon,
+                                                         name="Constr1"+delta2_name)
+    contraintes["Constr2"+delta2_name] = model.addConstr(- majorant * variables[delta2_name] <= train_depart_2 - train_arrivee_1 + epsilon,
+                                                         name="Constr2"+delta2_name)
+    # Contrainte d'occupation
+    cstr_name = f"Occu_non_abs_{chantier_id}_{voie}_{jour1}_{numero1}_{jour2}_{numero2}"
+    contraintes[cstr_name] = model.addConstr(cvt_1 + cvt_2 + variables[delta1_name] <= 2 + variables[delta2_name],
+                                             name=cstr_name)
+
 # Initialisation des dictionnaires DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE et DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART
 DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE = {}
 for index in tqdm(ARRIVEES.index, desc="Dict MAX_DEPART_DU_TRAIN_ARRIVEE", colour="#0088ff") :
@@ -161,7 +205,7 @@ for index_1 in tqdm(ARRIVEES.index, desc="Occupation WPY_REC", colour='#00ff00')
         creneau_depart_2 = DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[index_2]
         if creneau_depart_1 >= creneau_arrivee_2 and creneau_depart_2 >= creneau_arrivee_1 :
             for voie in range(1, int(NB_VOIES[0]) + 1) :
-                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_REC", voie,
+                add_occu_voies_non_abs(MODEL, VARIABLES, CONTRAINTES, "WPY_REC", voie,
                         jour_1, numero_1, jour_2, numero_2, creneau_arrivee_1, creneau_arrivee_2, MAJORANT)
 
 # Chantiers de "formation" et de "départ"
@@ -179,11 +223,50 @@ for index_1 in tqdm(DEPARTS.index, desc="Occupation WPY_FOR et WPY_DEP", colour=
         creneau_arrivee_2 = DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[index_2]
         if creneau_depart_1 >= creneau_arrivee_2 and creneau_depart_2 >= creneau_arrivee_1 :
             for voie in range(1, int(NB_VOIES[1]) + 1) :
-                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_FOR", voie,
+                add_occu_voies_non_abs(MODEL, VARIABLES, CONTRAINTES, "WPY_FOR", voie,
                         jour_1, numero_1, jour_2, numero_2, creneau_depart_1, creneau_depart_2, MAJORANT)
             for voie in range(1, int(NB_VOIES[2]) + 1) :
-                add_occu_voies(MODEL, VARIABLES, CONTRAINTES, "WPY_DEP", voie,
+                add_occu_voies_non_abs(MODEL, VARIABLES, CONTRAINTES, "WPY_DEP", voie,
                         jour_1, numero_1, jour_2, numero_2, creneau_depart_1, creneau_depart_2, MAJORANT)
+
+# Contrainte de remplissage des voies par ordre croissant
+# Chantier "réception"
+for voie in tqdm(range(1, int(NB_VOIES[0])), desc="Remplissage WPY_REC", colour='#ffff00'):
+    curr_cvt = 0
+    next_cvt = 0
+    for index in ARRIVEES.index:
+        jour = ARRIVEES_DATE[index]
+        numero = ARRIVEES_TR_NB[index]
+        cvt_name_1 = f"CVT_WPY_REC_{str(voie)}_{jour}_{numero}"
+        cvt_name_2 = f"CVT_WPY_REC_{str(voie+1)}_{jour}_{numero}"
+        curr_cvt += VARIABLES[cvt_name_1]
+        next_cvt += VARIABLES[cvt_name_2]
+    MODEL.addConstr(curr_cvt >= next_cvt, name=f"Remplissage_WPY_REC_{str(voie)}_{str(voie+1)}")
+# Chantier "formation"
+for voie in tqdm(range(1, int(NB_VOIES[1])), desc="Remplissage WPY_FOR", colour='#ffff00'):
+    curr_cvt = 0
+    next_cvt = 0
+    for index in DEPARTS.index:
+        jour = DEPARTS_DATE[index]
+        numero = DEPARTS_TR_NB[index]
+        cvt_name_1 = f"CVT_WPY_FOR_{str(voie)}_{jour}_{numero}"
+        cvt_name_2 = f"CVT_WPY_FOR_{str(voie+1)}_{jour}_{numero}"
+        curr_cvt += VARIABLES[cvt_name_1]
+        next_cvt += VARIABLES[cvt_name_2]
+    MODEL.addConstr(curr_cvt >= next_cvt, name=f"Remplissage_WPY_FOR_{str(voie)}_{str(voie+1)}")
+# Chantier "départ"
+for voie in tqdm(range(1, int(NB_VOIES[2])), desc="Remplissage WPY_DEP", colour='#ffff00'):
+    curr_cvt = 0
+    next_cvt = 0
+    for index in DEPARTS.index:
+        jour = DEPARTS_DATE[index]
+        numero = DEPARTS_TR_NB[index]
+        cvt_name_1 = f"CVT_WPY_DEP_{str(voie)}_{jour}_{numero}"
+        cvt_name_2 = f"CVT_WPY_DEP_{str(voie+1)}_{jour}_{numero}"
+        curr_cvt += VARIABLES[cvt_name_1]
+        next_cvt += VARIABLES[cvt_name_2]
+    MODEL.addConstr(curr_cvt >= next_cvt, name=f"Remplissage_WPY_DEP_{str(voie)}_{str(voie+1)}")
+
 
 ## FONCTION OBJECTIF
 # minimiser le nombre de voie max dans le chantier de formation
@@ -228,7 +311,7 @@ if __name__=='__main__':
         for index_indisp, (creneau_min, creneau_max) in enumerate(indispo_to_intervalle(
                     DATA_DICT, "machine", machine)):
             indispo.append((machine, creneau_min, creneau_max))
-    earliest_arrival = min(ARRIVEES['JARR'])
+    earliest_arrival = min(ARRIVEES["JARR"])
     latest_departure = max(DEPARTS["JDEP"])
     dis_agenda.full_process(VARIABLES, (earliest_arrival, latest_departure),
                             ARRIVEES, DEPARTS, indispo)
