@@ -313,5 +313,3 @@ class FretModelJal2(FretModel):
                                                                 name=indic_voie_constr+"_2")
             obj_somme_indic += self.variables[indic_voie_name]
         self.obj_function = obj_somme_indic
-
-

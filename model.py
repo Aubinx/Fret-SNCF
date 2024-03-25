@@ -64,7 +64,6 @@ class FretModel:
                 name = f"Train_ARR_{jour}_{numero}_DEB",
                 vtype = GRB.INTEGER,
                 lb = 0)
-
         # Variables de décision concernant les trains au départ :
         for index in self.departs().index:
             jour = self.departs()[DepartsColumnNames.DEP_DATE][index]
@@ -247,5 +246,3 @@ class FretModel:
         self.contraintes[ci3_name] = ci3
         linear_abs = LinExpr(2 * prod - expr_var)
         return linear_abs
-
-    # JALON 2

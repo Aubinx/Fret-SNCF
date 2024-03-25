@@ -54,10 +54,10 @@ def load_instance(file_path) -> dict:
     all_dict[InstanceSheetNames.SHEET_TACHES] = pd.read_excel(file_path,
                     sheet_name=InstanceSheetNames.SHEET_TACHES, dtype=str)
     print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_TACHES}")
-    # print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
-    # all_dict[InstanceSheetNames.SHEET_ROULEMENTS] = pd.read_excel(file_path,
-    #                 sheet_name=InstanceSheetNames.SHEET_ROULEMENTS, dtype=str)
-    # print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
+    print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
+    all_dict[InstanceSheetNames.SHEET_ROULEMENTS] = pd.read_excel(file_path,
+                    sheet_name=InstanceSheetNames.SHEET_ROULEMENTS, dtype=str)
+    print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
     print("Standardisation de tous les formats de dates")
     set_date_to_standard(all_dict)
     print("Ajout des creneaux")

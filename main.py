@@ -13,7 +13,7 @@ import display_tools.compute_stats as dis_tracks
 overall_start_time = time.time()
 
 # Chemin d'accès du fichier contenant l'instance
-INSTANCE = lecture_donnees.ALL_INSTANCES[2]
+INSTANCE = lecture_donnees.ALL_INSTANCES[0]
 INSTANCE_DIR = "Instances/" + INSTANCE
 INSTANCE_FILE = INSTANCE_DIR + ".xlsx"
 INSTANCE_PICKLE_FILE = INSTANCE_DIR + ".pkl"
