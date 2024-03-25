@@ -13,7 +13,7 @@ import horaires
 
 # Chemin d'accès du fichier contenant l'instance
 ALL_INSTANCES = ["mini_instance", "instance_WPY_simple", "instance_WPY_realiste_jalon1", "instance_WPY_intermediaire_jalon1"]
-INSTANCE = ALL_INSTANCES[3]
+INSTANCE = ALL_INSTANCES[1]
 INSTANCE_DIR = "Instances/" + INSTANCE
 INSTANCE_FILE = INSTANCE_DIR + ".xlsx"
 INSTANCE_PICKLE_FILE = INSTANCE_DIR + ".pkl"
@@ -57,10 +57,10 @@ def load_instance(file_path) -> dict:
     all_dict[InstanceSheetNames.SHEET_TACHES] = pd.read_excel(file_path,
                     sheet_name=InstanceSheetNames.SHEET_TACHES, dtype=str)
     print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_TACHES}")
-    # print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
-    # all_dict[InstanceSheetNames.SHEET_ROULEMENTS] = pd.read_excel(file_path,
-    #                 sheet_name=InstanceSheetNames.SHEET_ROULEMENTS, dtype=str)
-    # print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
+    print(f"Lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
+    all_dict[InstanceSheetNames.SHEET_ROULEMENTS] = pd.read_excel(file_path,
+                    sheet_name=InstanceSheetNames.SHEET_ROULEMENTS, dtype=str)
+    print(f"Fin de la lecture de la feuille : {InstanceSheetNames.SHEET_ROULEMENTS}")
     print("Standardisation de tous les formats de dates")
     set_date_to_standard(all_dict)
     print("Ajout des creneaux")
@@ -290,6 +290,24 @@ def creneau_from_indisp(indispos_creneaux, indisp):
             # -> elle doit aussi être prise en compte pour le lundi de la semaine 1
             indispos_creneaux.append((0, horaires.triplet_vers_entier(1, end_hour, end_minute)))
     return creneau_start,creneau_end
+
+def get_all_days(data):
+    """Renvoie la liste de tous les jours présents dans les données sous forme de `str`"""
+    first_day = get_first_day(data)
+    all_days = [first_day]
+    next_day_date = first_day + datetime.timedelta(days=1)
+    next_day_str = datetime.datetime.strftime(next_day_date, '%d/%m/%Y')
+    while next_day_str in DEPARTS[DepartsColumnNames.DEP_DATE].values:
+        all_days.append(next_day_date)
+        next_day_date += datetime.timedelta(days=1)
+        next_day_str = datetime.datetime.strftime(next_day_date, '%d/%m/%Y')
+    return all_days
+
+def get_all_days_as_numbers(data):
+    all_days_date = get_all_days(data)
+    first_day = get_first_day(data)
+    all_days_number = [(jour-first_day).days + 1 for jour in all_days_date]
+    return all_days_number
 
 if __name__ == "__main__":
     print(DATA_DICT.keys())
