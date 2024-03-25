@@ -6,4 +6,23 @@ from util import (InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames,
 from model_jalon2 import FretModelJal2
 
 class FretModelJal3(FretModelJal2):
-    pass
+    
+    # override
+    def add_constr_ordre_taches_arrivee(self):
+        pass
+
+    # override
+    def add_constr_ordre_taches_depart(self):
+        pass
+
+    def add_constr_agent_cycle_unique(self):
+        pass
+
+    def add_constr_taches_humaines_simultanées(self):
+        pass
+
+    def add_constr_indispos_chantiers_humains(self):
+        pass
+
+    def add_constr_respect_horaire_agent(self):
+        pass
