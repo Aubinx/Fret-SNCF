@@ -34,8 +34,6 @@ class FretModel:
         self.model = Model("Fret SNCF")
         self.variables = {}
         self.contraintes = {}
-        self.dict_max_dep_for_train_arr = {}
-        self.dict_min_arr_for_train_dep = {}
 
     def load_whole_model(self):
         """Charge l'ensemble des variables et contraintes du modèle jusqu'au `jalon` demandé"""

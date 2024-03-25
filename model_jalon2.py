@@ -26,6 +26,12 @@ class FretModelJal2(FretModel):
             self.dict_min_arr_for_train_dep = {}
 
     # override
+    def reset_model(self):
+        super().reset_model()
+        self.dict_max_dep_for_train_arr = {}
+        self.dict_min_arr_for_train_dep = {}
+
+    # override
     def load_whole_model(self):
         super().load_whole_model()
         self.add_vars_secondary_occupation_voies()
