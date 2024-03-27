@@ -77,6 +77,26 @@ def get_first_day(data):
             first_day = jour
     return first_day
 
+def get_all_days(data):
+    """Renvoie la liste de tous les jours présents dans les données sous forme de `str`"""
+    first_day = get_first_day(data)
+    all_days = [first_day]
+    next_day_date = first_day + datetime.timedelta(days=1)
+    next_day_str = datetime.datetime.strftime(next_day_date, '%d/%m/%Y')
+    while next_day_str in data[InstanceSheetNames.SHEET_DEPARTS][DepartsColumnNames.DEP_DATE].values:
+        all_days.append(next_day_date)
+        next_day_date += datetime.timedelta(days=1)
+        next_day_str = datetime.datetime.strftime(next_day_date, '%d/%m/%Y')
+    return all_days
+
+def get_all_days_as_numbers(data):
+    """Renvoie la liste de tous les jours présents dans les données
+    sous forme d'entiers avec 1 le premier jour de l'instance"""
+    all_days_date = get_all_days(data)
+    first_day = get_first_day(data)
+    all_days_number = [(jour-first_day).days + 1 for jour in all_days_date]
+    return all_days_number
+
 def set_date_to_standard(data):
     """
     Transforme toutes les dates présentes dans l'instance `data` au format `jj/mm/aaaa`
