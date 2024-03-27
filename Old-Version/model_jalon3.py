@@ -38,12 +38,14 @@ for index in TACHES_HUMAINES.index:
     type_train = TACHES_HUMAINES[TachesColumnNames.TASK_TYPE_TRAIN][index]
     task_id = TACHES_HUMAINES[TachesColumnNames.TASK_ORDRE][index]
     duree = int(TACHES_HUMAINES[TachesColumnNames.TASK_DURATION][index])
-    DICT_TACHES[type_train+"_"+task_id] = {"Attribution":[], "Horaire":[], "Duree": duree}
+    DICT_TACHES[type_train+"_"+task_id] = {"Duree": duree}
+# "train" : {"Attribution":[], "Horaire":[]}
 DICT_TACHES_PAR_AGENT = {}
 # "agent": {"Cycle":[], "Attribution":[], "Horaire":[]}
 # contient les clés des variables pour accéder au dictionnaire VARIABLES
 
 nb_variables_new = 0
+nb_var_secondaires_new = 0
 def add_vars_taches_humaines():
     global nb_variables_new
     for roulement_id in ROULEMENTS_AGENTS[RoulementsColumnNames.ROUL_NAME].index:
@@ -69,12 +71,14 @@ def add_vars_taches_humaines():
                     trains_chantier = ARRIVEES if chantier == "WPY_REC" else DEPARTS
                     trains_dates = ARRIVEES_DATE if chantier == "WPY_REC" else DEPARTS_DATE
                     trains_id = ARRIVEES_TR_NB if chantier == "WPY_REC" else DEPARTS_TR_NB
-                    for train_index in trains_chantier.index:
-                        train_day = trains_dates[train_index]
-                        train_number = trains_id[train_index]
-                        for tache_id in taches_sub_chantier.index:
-                            task_name = taches_sub_chantier[TachesColumnNames.TASK_ORDRE][tache_id]
-                            task_train_type = taches_sub_chantier[TachesColumnNames.TASK_TYPE_TRAIN][tache_id]
+                    for tache_id in taches_sub_chantier.index:
+                        task_name = taches_sub_chantier[TachesColumnNames.TASK_ORDRE][tache_id]
+                        task_train_type = taches_sub_chantier[TachesColumnNames.TASK_TYPE_TRAIN][tache_id]
+                        for train_index in trains_chantier.index:
+                            train_day = trains_dates[train_index]
+                            train_number = trains_id[train_index]
+                            if f"{train_day}_{train_number}" not in DICT_TACHES[f"{task_train_type}_{task_name}"]:
+                                DICT_TACHES[f"{task_train_type}_{task_name}"][f"{train_day}_{train_number}"] = {"Attribution":[], "Horaire":[]}
                             VARIABLES[f"Attr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}"] = MODEL.addVar(
                                 name = f"Attr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}",
                                 vtype = GRB.BINARY
@@ -83,8 +87,8 @@ def add_vars_taches_humaines():
                                 name = f"H_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}",
                                 vtype = GRB.INTEGER
                             )
-                            DICT_TACHES[task_train_type+"_"+task_name]["Attribution"].append(f"Attr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}")
-                            DICT_TACHES[task_train_type+"_"+task_name]["Horaire"].append(f"H_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}")
+                            DICT_TACHES[f"{task_train_type}_{task_name}"][f"{train_day}_{train_number}"]["Attribution"].append(f"Attr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}")
+                            DICT_TACHES[f"{task_train_type}_{task_name}"][f"{train_day}_{train_number}"]["Horaire"].append(f"H_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}")
                             DICT_TACHES_PAR_AGENT[dict_agent_name]["Attribution"].append(f"Attr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}")
                             DICT_TACHES_PAR_AGENT[dict_agent_name]["Horaire"].append(f"H_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}")
                             nb_variables_new += 2
@@ -117,85 +121,90 @@ TACHE_SUIVANTE = {"ARR_1":"ARR_2", "ARR_2":"ARR_3", "ARR_3":"DEP_1",
 # override
 def add_constr_ordre_taches_arrivee():
     # ARR_1 après arrivée du train
-    for grb_var_name in DICT_TACHES["ARR_1"]["Horaire"]:
-        name_elements = grb_var_name.split(sep="_")
-        length = len(name_elements)
-        train_day, train_number = name_elements[length-2], name_elements[length-1]
+    for train_name in DICT_TACHES["ARR_1"]:
+        if train_name == "Duree":
+            continue
+        train_day, train_number = train_name.split(sep="_")
         temp_df = ARRIVEES[ARRIVEES[ArriveesColumnNames.ARR_DATE] == train_day]
         temp_df = temp_df[temp_df[ArriveesColumnNames.ARR_TRAIN_NUMBER] == train_number]
         correct_index = temp_df.index[0]
         arr_cren = ARRIVEES_CRENEAUX[correct_index]
-        CONTRAINTES[f"Constr_ordre_arriveeREC_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] >= arr_cren, name=f"Constr_ordre_arriveeREC_{grb_var_name}")
+        for grb_var_name in DICT_TACHES["ARR_1"][train_name]["Horaire"]:
+            CONTRAINTES[f"Constr_ordre_arriveeREC_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] >= arr_cren, name=f"Constr_ordre_arriveeREC_{grb_var_name}")
 
     # ARR_2 après ARR_1
-    for grb_var_name in tqdm(DICT_TACHES["ARR_2"]["Horaire"]):
-        prec=TACHE_PRECEDENTE["ARR_2"]
-        name_elements = grb_var_name.split(sep="_")
-        length = len(name_elements)
-        train_day, train_number = name_elements[length-2], name_elements[length-1]
-        for grb_var_name_prec in DICT_TACHES[prec]["Horaire"]:
-            name_elements_prec = grb_var_name_prec.split(sep="_")
-            length_prec = len(name_elements_prec)
-            train_day_prec, train_number_prec = name_elements_prec[length_prec-2], name_elements_prec[length_prec-1]
-            if train_day == train_day_prec and train_number == train_number_prec:
+    for train_name in tqdm(DICT_TACHES["ARR_2"], desc="ARR_2 après ARR_1"):
+        if train_name == "Duree":
+            continue
+        train_day, train_number = train_name.split(sep="_")
+        for grb_var_name in DICT_TACHES["ARR_2"][train_name]["Horaire"]:
+            prec=TACHE_PRECEDENTE["ARR_2"]
+            for grb_var_name_prec in DICT_TACHES[prec][train_name]["Horaire"]:
                 CONTRAINTES[f"Constr_ordre_arr2apresarr1_{grb_var_name}_{grb_var_name_prec}"] = MODEL.addConstr(VARIABLES[grb_var_name] >= VARIABLES[grb_var_name_prec] + 15, name=f"Constr_ordre_arr2apresarr1_{grb_var_name}")
 
     # ARR_2 avant ARR_3=DEB
-    for grb_var_name in DICT_TACHES["ARR_2"]["Horaire"]:
-        name_elements = grb_var_name.split(sep="_")
-        length = len(name_elements)
-        train_day, train_number = name_elements[length-2], name_elements[length-1]
-        CONTRAINTES[f"Constr_ordre_arr2avantDEB_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] + 45 <= VARIABLES[f"Train_ARR_{train_day}_{train_number}_DEB"], name=f"Constr_ordre_arr2avantDEB_{grb_var_name}")
+    for train_name in DICT_TACHES["ARR_2"]:
+        if train_name == "Duree":
+            continue
+        train_day, train_number = train_name.split(sep="_")
+        for grb_var_name in DICT_TACHES["ARR_2"][train_name]["Horaire"]:
+            CONTRAINTES[f"Constr_ordre_arr2avantDEB_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] + 45 <= VARIABLES[f"Train_ARR_{train_day}_{train_number}_DEB"], name=f"Constr_ordre_arr2avantDEB_{grb_var_name}")
 
 # Racordement pas changé depuis jalon 1
 
 # override
 def add_constr_ordre_taches_depart():
-    for grb_var_name in DICT_TACHES["DEP_2"]["Horaire"]:
-        name_elements = grb_var_name.split(sep="_")
-        length = len(name_elements)
-        train_day, train_number = name_elements[length-2], name_elements[length-1]
+    for train_name in DICT_TACHES["DEP_2"]:
+        if train_name == "Duree":
+            continue
+        train_day, train_number = train_name.split(sep="_")
+        for grb_var_name in DICT_TACHES["DEP_2"][train_name]["Horaire"]:
     # DEP_2 après DEP_1=FOR
-        CONTRAINTES[f"Constr_ordre_dep2apresFOR_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] >= VARIABLES[f"Train_DEP_{train_day}_{train_number}_FOR"] + 15, name=f"Constr_ordre_dep2apresFOR_{grb_var_name}")
+            CONTRAINTES[f"Constr_ordre_dep2apresFOR_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] >= VARIABLES[f"Train_DEP_{train_day}_{train_number}_FOR"] + 15, name=f"Constr_ordre_dep2apresFOR_{grb_var_name}")
     # DEP_2 avant DEP_3=DEG
-        CONTRAINTES[f"Constr_ordre_dep2avantDEG_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] + 150 <= VARIABLES[f"Train_DEP_{train_day}_{train_number}_DEG"], name=f"Constr_ordre_dep2avantDEG_{grb_var_name}")
+            CONTRAINTES[f"Constr_ordre_dep2avantDEG_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] + 150 <= VARIABLES[f"Train_DEP_{train_day}_{train_number}_DEG"], name=f"Constr_ordre_dep2avantDEG_{grb_var_name}")
 
-    for grb_var_name in DICT_TACHES["DEP_4"]["Horaire"]:
-        name_elements = grb_var_name.split(sep="_")
-        length = len(name_elements)
-        train_day, train_number = name_elements[length-2], name_elements[length-1]
-    # DEP_4 après DEP_3=DEG
-        CONTRAINTES[f"Constr_ordre_dep4apresDEG_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] >= VARIABLES[f"Train_DEP_{train_day}_{train_number}_DEG"] + 15, name=f"Constr_ordre_dep4apresDEG_{grb_var_name}")
-    # DEP_4 avant départ du train
+    for train_name in DICT_TACHES["DEP_4"]:
+        if train_name == "Duree":
+            continue
+        train_day, train_number = train_name.split(sep="_")
         temp_df = DEPARTS[DEPARTS[DepartsColumnNames.DEP_DATE] == train_day]
         temp_df = temp_df[temp_df[DepartsColumnNames.DEP_TRAIN_NUMBER] == train_number]
         correct_index = temp_df.index[0]
         dep_cren = DEPARTS_CRENEAUX[correct_index]
-        CONTRAINTES[f"Constr_ordre_departDEP_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] + 20 <= dep_cren, name=f"Constr_ordre_departDEP_{grb_var_name}")
+        for grb_var_name in DICT_TACHES["DEP_4"][train_name]["Horaire"]:
+    # DEP_4 après DEP_3=DEG
+            CONTRAINTES[f"Constr_ordre_dep4apresDEG_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] >= VARIABLES[f"Train_DEP_{train_day}_{train_number}_DEG"] + 15, name=f"Constr_ordre_dep4apresDEG_{grb_var_name}")
+    # DEP_4 avant départ du train
+            CONTRAINTES[f"Constr_ordre_departDEP_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] + 20 <= dep_cren, name=f"Constr_ordre_departDEP_{grb_var_name}")
 
 def add_constr_parallelisation_machines_humains():
     """Assurer que le créneau sur lequel a lieu une tâche machine est aussi celui de l'agent qui la réalise"""
     # Tache DEB
-    for grb_var_name in DICT_TACHES["ARR_3"]["Horaire"]:
-        name_elements = grb_var_name.split(sep="_")
-        length = len(name_elements)
-        train_day, train_number = name_elements[length-2], name_elements[length-1]
-        CONTRAINTES[f"Constr_ordre_arr3simultDEB_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] == VARIABLES[f"Train_ARR_{train_day}_{train_number}_DEB"], name=f"Constr_ordre_arr3simultDEB_{grb_var_name}")
+    for train_name in DICT_TACHES["ARR_3"]:
+        if train_name == "Duree":
+            continue
+        train_day, train_number = train_name.split(sep="_")
+        for grb_var_name in DICT_TACHES["ARR_3"][train_name]["Horaire"]:
+            CONTRAINTES[f"Constr_ordre_arr3simultDEB_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] == VARIABLES[f"Train_ARR_{train_day}_{train_number}_DEB"], name=f"Constr_ordre_arr3simultDEB_{grb_var_name}")
     # Tache FOR
-    for grb_var_name in DICT_TACHES["DEP_1"]["Horaire"]:
-        name_elements = grb_var_name.split(sep="_")
-        length = len(name_elements)
-        train_day, train_number = name_elements[length-2], name_elements[length-1]
-        CONTRAINTES[f"Constr_ordre_dep1simultFOR_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] == VARIABLES[f"Train_DEP_{train_day}_{train_number}_FOR"], name=f"Constr_ordre_dep1simultFOR_{grb_var_name}")
+    for train_name in DICT_TACHES["DEP_1"]:
+        if train_name == "Duree":
+            continue
+        train_day, train_number = train_name.split(sep="_")
+        for grb_var_name in DICT_TACHES["DEP_1"][train_name]["Horaire"]:
+            CONTRAINTES[f"Constr_ordre_dep1simultFOR_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] == VARIABLES[f"Train_DEP_{train_day}_{train_number}_FOR"], name=f"Constr_ordre_dep1simultFOR_{grb_var_name}")
     # Tache FOR
-    for grb_var_name in DICT_TACHES["DEP_3"]["Horaire"]:
-        name_elements = grb_var_name.split(sep="_")
-        length = len(name_elements)
-        train_day, train_number = name_elements[length-2], name_elements[length-1]
-        CONTRAINTES[f"Constr_ordre_dep3simultDEG_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] == VARIABLES[f"Train_DEP_{train_day}_{train_number}_DEG"], name=f"Constr_ordre_dep3simultDEG_{grb_var_name}")
+    for train_name in DICT_TACHES["DEP_3"]:
+        if train_name == "Duree":
+            continue
+        train_day, train_number = train_name.split(sep="_")
+        for grb_var_name in DICT_TACHES["DEP_3"][train_name]["Horaire"]:
+            CONTRAINTES[f"Constr_ordre_dep3simultDEG_{grb_var_name}"] = MODEL.addConstr(VARIABLES[grb_var_name] == VARIABLES[f"Train_DEP_{train_day}_{train_number}_DEG"], name=f"Constr_ordre_dep3simultDEG_{grb_var_name}")
 
 def add_constr_taches_humaines_simultanées():
-    for agent_name in tqdm(DICT_TACHES_PAR_AGENT):
+    global nb_var_secondaires_new
+    for agent_name in tqdm(DICT_TACHES_PAR_AGENT, desc="Taches Simult Agent"):
         for attr_1 in DICT_TACHES_PAR_AGENT[agent_name]["Attribution"]:
             name_elts_1 = attr_1.split(sep="_")
             _, var_name_1 = attr_1.split(sep="_", maxsplit=1)
@@ -218,6 +227,7 @@ def add_constr_taches_humaines_simultanées():
                 # var binaire delta_arr2_dep1
                 delta1_name = f"delta_Db2-inf-Fn1_{var_name_1}_{var_name_2}"
                 VARIABLES[delta1_name] = MODEL.addVar(vtype=GRB.BINARY, name=delta1_name)
+                nb_var_secondaires_new += 1
                 CONTRAINTES["Constr1"+delta1_name] = MODEL.addConstr(MAJORANT * (1 - VARIABLES[delta1_name]) >= horaire_debut_2 - horaire_fin_1 + EPSILON,
                                                                     name="Constr1_"+delta1_name)
                 CONTRAINTES["Constr2"+delta1_name] = MODEL.addConstr(- MAJORANT * VARIABLES[delta1_name] <= horaire_debut_2 - horaire_fin_1 + EPSILON,
@@ -225,6 +235,7 @@ def add_constr_taches_humaines_simultanées():
                 # var binaire delta_arr1_dep2
                 delta2_name = f"delta_Fn2-inf-Db1_{var_name_1}_{var_name_2}"
                 VARIABLES[delta2_name] = MODEL.addVar(vtype=GRB.BINARY, name=delta2_name)
+                nb_var_secondaires_new += 1
                 CONTRAINTES["Constr1"+delta2_name] = MODEL.addConstr(MAJORANT * (1 - VARIABLES[delta2_name]) >= horaire_fin_2 - horaire_debut_1 + EPSILON,
                                                                     name="Constr1"+delta2_name)
                 CONTRAINTES["Constr2"+delta2_name] = MODEL.addConstr(- MAJORANT * VARIABLES[delta2_name] <= horaire_fin_2 - horaire_debut_1 + EPSILON,
@@ -258,10 +269,45 @@ def add_constr_indispos_chantiers_humains():
                                 CONTRAINTES[new_cstr_name] = MODEL.addConstr(VARIABLES[var_cr_name] == 0, name=new_cstr_name)
 
 def add_constr_respect_horaire_agent():
-    pass
+    for agent_name in tqdm(DICT_TACHES_PAR_AGENT, desc="Resp Horaires Agents"):
+        horaire_debut_travail = 0
+        horaire_fin_travail = 0
+        # agent_name de la forme : "roul{roulement_id}_jour{str(jour)}_ag{str(agent)}"
+        roul_id = int("".join(agent_name.split(sep="_")[0][4::]))
+        jour = "".join(agent_name.split(sep="_")[1][4::])
+        print("\nJOUR : |", jour, "|")
+        print("ID ROULEMENT : |", roul_id, "|")
+        cycles = ROULEMENTS_AGENTS[RoulementsColumnNames.ROUL_CYCLES][roul_id].split(';')
+        for var_cycle in DICT_TACHES_PAR_AGENT[agent_name]["Cycle"]:
+            length = len(var_cycle)
+            cycle_index = int(var_cycle[length-1])
+            cycle = cycles[cycle_index]
+            debut_cycle, fin_cycle = cycle.split(sep="-")
+            debut_cycle = horaires.triplet_vers_entier(int(jour), int(debut_cycle.split(sep=":")[0]), int(debut_cycle.split(sep=":")[1]))
+            fin_cycle = horaires.triplet_vers_entier(int(jour), int(fin_cycle.split(sep=":")[0]), int(fin_cycle.split(sep=":")[1]))
+            horaire_debut_travail += debut_cycle * VARIABLES[var_cycle]
+            horaire_fin_travail += fin_cycle * VARIABLES[var_cycle]
+        for var_tache in DICT_TACHES_PAR_AGENT[agent_name]["Horaire"]:
+            constr_name = f"RespHorairesAgent_Start_{var_tache}"
+            CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] >= horaire_debut_travail, name=constr_name)
+            _, var_name = var_tache.split(sep="_", maxsplit=1)
+            chantier = var_name.split(sep="_")[4]
+            type_train = "ARR" if chantier == "REC" else "DEP"
+            task_id = var_name.split(sep="_")[5]
+            duree = DICT_TACHES[type_train+"_"+task_id]["Duree"]
+            constr_name = f"RespHorairesAgent_End_{var_tache}"
+            CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] + duree <= horaire_debut_travail, name=constr_name)
 
 def add_constr_attrib_tache_unique():
-    pass
+    for tache in DICT_TACHES:
+        for train in DICT_TACHES[tache]:
+            if train == "Duree":
+                continue
+            cstr_name = f"AttribUnique_{tache}_{train}"
+            somme_attribs = 0
+            for var_name in DICT_TACHES[tache][train]["Attribution"]:
+                somme_attribs += VARIABLES[var_name]
+            CONTRAINTES[cstr_name] = MODEL.addConstr(somme_attribs == 1, name=cstr_name)
 
 add_constr_agent_cycle_unique()
 add_constr_ordre_taches_arrivee()
@@ -269,7 +315,10 @@ add_constr_ordre_taches_depart()
 add_constr_parallelisation_machines_humains()
 add_constr_taches_humaines_simultanées()
 add_constr_indispos_chantiers_humains()
+# add_constr_respect_horaire_agent()
+add_constr_attrib_tache_unique()
 MODEL.update()
 MODEL.optimize()
 MODEL.write(f"Outputs/out_{INSTANCE}_jalon3.sol")
-print("Nombre de variables ajoutées au modèle : ", nb_variables_new)
+print("Nombre de variables de décision ajoutées au modèle : ", nb_variables_new)
+print("Nombre de variables auxiliaires ajoutées : ", nb_var_secondaires_new)
