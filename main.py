@@ -5,6 +5,7 @@ import lecture_donnees
 from donnees_trains import indispo_to_intervalle
 from model import FretModel
 from model_jalon2 import FretModelJal2
+from model_jalon3 import FretModelJal3
 from util import ORDERED_MACHINES
 import display_tools.display_agenda as dis_agenda
 import display_tools.compute_stats as dis_tracks
@@ -38,10 +39,14 @@ if JALON == 1:
     FRET_MODEL = FretModel(DATA_DICT)
 elif JALON == 2:
     FRET_MODEL = FretModelJal2(DATA_DICT)
+elif JALON == 3:
+    FRET_MODEL = FretModelJal3(DATA_DICT)
 if __name__ == "__main__":
     FRET_MODEL.load_whole_model()
     if JALON == 2:
         FRET_MODEL.set_model_objective_jalon2()
+    elif JALON == 3:
+        FRET_MODEL.set_model_objective_jalon3()
     FRET_MODEL.update_model()
     start_time = time.time()
     print("~~Time before optimization :", start_time - overall_start_time)
