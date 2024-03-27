@@ -1,5 +1,5 @@
 """Module rassemblant tous les apports liés au jalon 3"""
-import time, datetime
+import time, datetime, os
 from gurobipy import *
 from tqdm import tqdm
 import horaires
@@ -370,18 +370,15 @@ if __name__=='__main__':
     print("~~Time before optimization :", start_time - overall_start_time)
     print("~~Started optimizing.")
     WRITE_PATH =f"Modeles/model_{INSTANCE}_jalon3.lp"
-    if not os.path.isfile(WRITE_PATH):
-        MODEL.write(WRITE_PATH)
-    else:
-        MODEL = read(WRITE_PATH)
+    MODEL.write(WRITE_PATH)
     MODEL.optimize()
     opti_finished_time = time.time()
     print("~~Finished optimizing.\n~~Duration : ", opti_finished_time - start_time)
     print("~ Chargement du modèle et optimisation :", opti_finished_time - overall_start_time)
     if MODEL.status == GRB.INFEASIBLE:
         print("/!\ MODELE INFAISABLE")
-        MODEL.computeIIS()
-        MODEL.write(f"Modeles/iismodel_{INSTANCE}_jalon3.ilp")
+        # MODEL.computeIIS()
+        # MODEL.write(f"Modeles/iismodel_{INSTANCE}_jalon3.ilp")
     else:
         indispo = []
         for machine in ORDERED_MACHINES:
