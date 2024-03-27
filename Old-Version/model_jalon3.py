@@ -2,6 +2,7 @@
 import time
 from gurobipy import *
 from tqdm import tqdm
+import horaires
 from lecture_donnees import (INSTANCE, ARRIVEES, DEPARTS, DATA_DICT,
                              composition_train_depart_creneau,
                              composition_train_arrivee_creneau,
@@ -248,21 +249,26 @@ def add_constr_indispos_chantiers_humains():
                     for cycle_index in range(len(cycles)):
                         cycle = cycles[cycle_index]
                         debut_cycle, fin_cycle = cycle.split(sep="-")
+                        debut_cycle = horaires.triplet_vers_entier(jour, int(debut_cycle.split(sep=":")[0]), int(debut_cycle.split(sep=":")[1]))
+                        fin_cycle = horaires.triplet_vers_entier(jour, int(fin_cycle.split(sep=":")[0]), int(fin_cycle.split(sep=":")[1]))
                         for debut_indisp, fin_indisp in indispo_list:
                             if debut_cycle == debut_indisp and fin_cycle == fin_indisp:
-                                cr_name = f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"
-                                # CONTRAINTES[] = MODEL.addConstr(VARIABLES[cr_name]
-    pass
+                                var_cr_name = f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"
+                                new_cstr_name = f"Constr_indispo_chantier_{chantier}_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"
+                                CONTRAINTES[new_cstr_name] = MODEL.addConstr(VARIABLES[var_cr_name] == 0, name=new_cstr_name)
 
 def add_constr_respect_horaire_agent():
     pass
 
+def add_constr_attrib_tache_unique():
+    pass
 
 add_constr_agent_cycle_unique()
 add_constr_ordre_taches_arrivee()
 add_constr_ordre_taches_depart()
 add_constr_parallelisation_machines_humains()
 add_constr_taches_humaines_simultanées()
+add_constr_indispos_chantiers_humains()
 MODEL.update()
 MODEL.optimize()
 MODEL.write(f"Outputs/out_{INSTANCE}_jalon3.sol")
