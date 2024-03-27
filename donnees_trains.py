@@ -1,6 +1,7 @@
 """
 FONCTIONS UTILES POUR extraire des DONNEES des trains
 """
+from tqdm import tqdm
 from util import (InstanceSheetNames, CorrespondancesColumnNames,
                   ArriveesColumnNames, DepartsColumnNames,
                   ChantiersColumnNames, MachinesColumnNames)
@@ -125,3 +126,49 @@ def creneau_from_indisp(indispos_creneaux, indisp):
             # -> elle doit aussi être prise en compte pour le lundi de la semaine 1
             indispos_creneaux.append((0, horaires.triplet_vers_entier(1, end_hour, end_minute)))
     return creneau_start,creneau_end
+
+def dict_max_depart_du_train_d_arrivee(data):
+    """Initialisation du dictionnaire dict_max_dep_for_train_arr
+    grâce aux données de l'instance `data`"""
+    dict_max_dep_for_train_arr = {}
+    arrivees = data[InstanceSheetNames.SHEET_ARRIVEES]
+    for index in tqdm(arrivees.index, desc="Dict MAX_DEP_TRAIN_ARR", colour="#0088ff") :
+        jour = arrivees[ArriveesColumnNames.ARR_DATE][index]
+        numero = arrivees[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+        max_dep = max(composition_train_arrivee_creneau(data, (jour, numero)))
+        dict_max_dep_for_train_arr[index] = max_dep
+        dict_max_dep_for_train_arr[f"{jour}_{numero}"] = max_dep
+    return dict_max_dep_for_train_arr
+
+def dict_min_arrivee_du_train_de_depart(data):
+    """Initialisation du dictionnaire dict_min_arr_for_train_dep
+    grâce aux données de l'instance `data`"""
+    dict_min_arr_for_train_dep = {}
+    departs = data[InstanceSheetNames.SHEET_DEPARTS]
+    for index in tqdm(departs.index, desc="Dict MIN_ARR_TRAIN_DEP", colour="#0088ff") :
+        jour = departs[DepartsColumnNames.DEP_DATE][index]
+        numero = departs[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+        min_arr = min(composition_train_depart_creneau(data, (jour, numero)))
+        dict_min_arr_for_train_dep[index] = min_arr
+        dict_min_arr_for_train_dep[f"{jour}_{numero}"] = min_arr
+    return dict_min_arr_for_train_dep
+
+def dict_horaires_arrivees(data):
+    """Crée un dictionnaire contenant les créneaux d'arrivées de chaque train
+    les clés sont sous la forme `f"{jour}_{numero}"`"""
+    dico = {}
+    for index in data[InstanceSheetNames.SHEET_ARRIVEES].index:
+        jour = data[InstanceSheetNames.SHEET_ARRIVEES][ArriveesColumnNames.ARR_DATE][index]
+        numero = data[InstanceSheetNames.SHEET_ARRIVEES][ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
+        dico[f"{jour}_{numero}"] = data[InstanceSheetNames.SHEET_ARRIVEES][ArriveesColumnNames.ARR_CRENEAU][index]
+    return dico
+
+def dict_horaires_departs(data):
+    """Crée un dictionnaire contenant les créneaux de départ de chaque train
+    les clés sont sous la forme `f"{jour}_{numero}"`"""
+    dico = {}
+    for index in data[InstanceSheetNames.SHEET_DEPARTS].index:
+        jour = data[InstanceSheetNames.SHEET_DEPARTS][DepartsColumnNames.DEP_DATE][index]
+        numero = data[InstanceSheetNames.SHEET_DEPARTS][DepartsColumnNames.DEP_TRAIN_NUMBER][index]
+        dico[f"{jour}_{numero}"] = data[InstanceSheetNames.SHEET_DEPARTS][DepartsColumnNames.DEP_CRENEAU][index]
+    return dico
