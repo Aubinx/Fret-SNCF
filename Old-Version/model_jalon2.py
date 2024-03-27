@@ -289,15 +289,13 @@ for voie in tqdm(range(1, int(NB_VOIES[1]) + 1), desc="Fonction OBJ", colour='#f
                                                           name=indic_voie_constr+"_2")
     obj_somme_indic += VARIABLES[indic_voie_name]
 
-MODEL.setObjective(obj_somme_indic - eps_obj, GRB.MINIMIZE)
-# MODEL.setObjective(- eps_obj, GRB.MINIMIZE)
-
-
 # MODEL.display()
 # MODEL.params.OutputFlag = 0
 # MODEL.optimize()
 
 if __name__=='__main__':
+    MODEL.setObjective(obj_somme_indic - eps_obj, GRB.MINIMIZE)
+    # MODEL.setObjective(- eps_obj, GRB.MINIMIZE)
     MODEL.update()
     start_time = time.time()
     print("~~Time before optimization :", start_time - overall_start_time)
