@@ -51,6 +51,13 @@ class TachesColumnNames:
     TASK_CHANTIER = "Chantier"
     TASK_ORDRE = "Ordre"
 
+class RoulementsColumnNames:
+    ROUL_NAME = "Roulement"
+    ROUL_DAYS = "Jours de la semaine"
+    ROUL_NB_AGENTS = "Nombre agents"
+    ROUL_CYCLES = "Cycles horaires"
+    ROUL_CONN_CHANTIER = "Connaissances chantiers"
+
 class OutputColumnNames:
     OUT_TASK_ID = "Id tâche"
     OUT_TASK_TYPE = "Type de tâche"
