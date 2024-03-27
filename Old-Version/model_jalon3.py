@@ -1,5 +1,5 @@
 """Ce module rassemble tous les apports liés au jalon 2"""
-import time
+import time, datetime
 from gurobipy import *
 from tqdm import tqdm
 import horaires
@@ -11,7 +11,7 @@ from util import (InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames,
                   ChantiersColumnNames, TachesColumnNames, RoulementsColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS)
 from model_jalon2 import MODEL, VARIABLES, CONTRAINTES, MAJORANT, linearise_abs
 
-#import display_tools.display_agenda as dis_agenda
+import display_tools.display_agenda as dis_agenda
 import display_tools.compute_stats as dis_tracks
 
 overall_start_time = time.time()
@@ -140,7 +140,7 @@ def add_constr_ordre_taches_arrivee():
         for grb_var_name in DICT_TACHES["ARR_2"][train_name]["Horaire"]:
             prec=TACHE_PRECEDENTE["ARR_2"]
             for grb_var_name_prec in DICT_TACHES[prec][train_name]["Horaire"]:
-                CONTRAINTES[f"Constr_ordre_arr2apresarr1_{grb_var_name}_{grb_var_name_prec}"] = MODEL.addConstr(VARIABLES[grb_var_name] >= VARIABLES[grb_var_name_prec] + 15, name=f"Constr_ordre_arr2apresarr1_{grb_var_name}")
+                CONTRAINTES[f"Constr_ordre_arr2apresarr1_{grb_var_name}_{grb_var_name_prec}"] = MODEL.addConstr(VARIABLES[grb_var_name] >= VARIABLES[grb_var_name_prec] + 15, name=f"Constr_ordre_arr2apresarr1_{grb_var_name}_{grb_var_name_prec}")
 
     # ARR_2 avant ARR_3=DEB
     for train_name in DICT_TACHES["ARR_2"]:
@@ -275,28 +275,37 @@ def add_constr_respect_horaire_agent():
         # agent_name de la forme : "roul{roulement_id}_jour{str(jour)}_ag{str(agent)}"
         roul_id = int("".join(agent_name.split(sep="_")[0][4::]))
         jour = "".join(agent_name.split(sep="_")[1][4::])
-        print("\nJOUR : |", jour, "|")
-        print("ID ROULEMENT : |", roul_id, "|")
         cycles = ROULEMENTS_AGENTS[RoulementsColumnNames.ROUL_CYCLES][roul_id].split(';')
         for var_cycle in DICT_TACHES_PAR_AGENT[agent_name]["Cycle"]:
             length = len(var_cycle)
             cycle_index = int(var_cycle[length-1])
             cycle = cycles[cycle_index]
-            debut_cycle, fin_cycle = cycle.split(sep="-")
-            debut_cycle = horaires.triplet_vers_entier(int(jour), int(debut_cycle.split(sep=":")[0]), int(debut_cycle.split(sep=":")[1]))
-            fin_cycle = horaires.triplet_vers_entier(int(jour), int(fin_cycle.split(sep=":")[0]), int(fin_cycle.split(sep=":")[1]))
+            debut_cycle, fin_cycle = creneaux_from_cycle(jour, cycle)
             horaire_debut_travail += debut_cycle * VARIABLES[var_cycle]
             horaire_fin_travail += fin_cycle * VARIABLES[var_cycle]
         for var_tache in DICT_TACHES_PAR_AGENT[agent_name]["Horaire"]:
+            var_attrib = "Attr_"+var_tache[2::]
             constr_name = f"RespHorairesAgent_Start_{var_tache}"
-            CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] >= horaire_debut_travail, name=constr_name)
+            # CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] >= horaire_debut_travail, name=constr_name)
+            CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] + (1-VARIABLES[var_attrib]) * MAJORANT >= horaire_debut_travail, name=constr_name)
             _, var_name = var_tache.split(sep="_", maxsplit=1)
             chantier = var_name.split(sep="_")[4]
             type_train = "ARR" if chantier == "REC" else "DEP"
             task_id = var_name.split(sep="_")[5]
             duree = DICT_TACHES[type_train+"_"+task_id]["Duree"]
             constr_name = f"RespHorairesAgent_End_{var_tache}"
-            CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] + duree <= horaire_debut_travail, name=constr_name)
+            # CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] + duree <= horaire_fin_travail, name=constr_name)
+            CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] + duree <= horaire_fin_travail + (1-VARIABLES[var_attrib]) * MAJORANT, name=constr_name)
+
+def creneaux_from_cycle(jour, cycle):
+    debut_cycle_str, fin_cycle_str = cycle.split(sep="-")
+    debut_cycle_datetime = datetime.datetime.strptime(debut_cycle_str, "%H:%M")
+    fin_cycle_datetime = datetime.datetime.strptime(fin_cycle_str, "%H:%M")
+    debut_cycle = horaires.triplet_vers_entier(int(jour), int(debut_cycle_str.split(sep=":")[0]), int(debut_cycle_str.split(sep=":")[1]))
+    fin_cycle = horaires.triplet_vers_entier(int(jour), int(fin_cycle_str.split(sep=":")[0]), int(fin_cycle_str.split(sep=":")[1]))
+    if fin_cycle_datetime < debut_cycle_datetime:
+        fin_cycle = horaires.triplet_vers_entier(int(jour)+1, int(fin_cycle_str.split(sep=":")[0]), int(fin_cycle_str.split(sep=":")[1]))
+    return debut_cycle, fin_cycle
 
 def add_constr_attrib_tache_unique():
     for tache in DICT_TACHES:
@@ -309,16 +318,51 @@ def add_constr_attrib_tache_unique():
                 somme_attribs += VARIABLES[var_name]
             CONTRAINTES[cstr_name] = MODEL.addConstr(somme_attribs == 1, name=cstr_name)
 
+def set_objective_jalon3():
+    objective = 0
+    for agent_name in DICT_TACHES_PAR_AGENT:
+        for var_cycle in DICT_TACHES_PAR_AGENT[agent_name]["Cycle"]:
+            objective += VARIABLES[var_cycle]
+    MODEL.setObjective(objective, GRB.MINIMIZE)
+
+add_constr_attrib_tache_unique()
+add_constr_respect_horaire_agent()
 add_constr_agent_cycle_unique()
 add_constr_ordre_taches_arrivee()
 add_constr_ordre_taches_depart()
 add_constr_parallelisation_machines_humains()
 add_constr_taches_humaines_simultanées()
 add_constr_indispos_chantiers_humains()
-# add_constr_respect_horaire_agent()
-add_constr_attrib_tache_unique()
-MODEL.update()
-MODEL.optimize()
-MODEL.write(f"Outputs/out_{INSTANCE}_jalon3.sol")
-print("Nombre de variables de décision ajoutées au modèle : ", nb_variables_new)
-print("Nombre de variables auxiliaires ajoutées : ", nb_var_secondaires_new)
+set_objective_jalon3()
+
+if __name__=='__main__':
+    MODEL.update()
+    start_time = time.time()
+    print("~~Time before optimization :", start_time - overall_start_time)
+    print("~~Started optimizing.")
+    MODEL.write(f"Modeles/model_{INSTANCE}_jalon3.lp")
+    MODEL.optimize()
+    opti_finished_time = time.time()
+    print("~~Finished optimizing.\n~~Duration : ", opti_finished_time - start_time)
+    print("~ Chargement du modèle et optimisation :", opti_finished_time - overall_start_time)
+    if MODEL.status == GRB.INFEASIBLE:
+        print("/!\ MODELE INFAISABLE")
+        MODEL.computeIIS()
+        MODEL.write(f"Modeles/iismodel_{INSTANCE}_jalon3.ilp")
+    else:
+        indispo = []
+        for machine in ORDERED_MACHINES:
+            for index_indisp, (creneau_min, creneau_max) in enumerate(indispo_to_intervalle(
+                        DATA_DICT, "machine", machine)):
+                indispo.append((machine, creneau_min, creneau_max))
+        earliest_arrival = min(ARRIVEES["JARR"])
+        latest_departure = max(DEPARTS["JDEP"])
+        dis_agenda.full_process(VARIABLES, (earliest_arrival, latest_departure),
+                                ARRIVEES, DEPARTS, indispo)
+        dis_tracks.full_process_stats((earliest_arrival, latest_departure), VARIABLES,
+                                    ARRIVEES, DEPARTS, NB_VOIES)
+        print("~ Affichage du résultat : ", time.time() - opti_finished_time)
+        print("## Valeur de l'objectif : ", MODEL.ObjVal)
+        print("Nombre de variables de décision ajoutées au modèle : ", nb_variables_new)
+        print("Nombre de variables auxiliaires ajoutées : ", nb_var_secondaires_new)
+        MODEL.write(f"Outputs/out_{INSTANCE}_jalon3.sol")
