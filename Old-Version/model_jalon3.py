@@ -1,15 +1,16 @@
-"""Ce module rassemble tous les apports liés au jalon 2"""
+"""Module rassemblant tous les apports liés au jalon 3"""
 import time, datetime
 from gurobipy import *
 from tqdm import tqdm
 import horaires
 from lecture_donnees import (INSTANCE, ARRIVEES, DEPARTS, DATA_DICT,
-                             composition_train_depart_creneau,
-                             composition_train_arrivee_creneau,
                              indispo_to_intervalle, get_all_days_as_numbers)
 from util import (InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames,
-                  ChantiersColumnNames, TachesColumnNames, RoulementsColumnNames, ORDERED_MACHINES, ORDERED_CHANTIERS)
-from model_jalon2 import MODEL, VARIABLES, CONTRAINTES, MAJORANT, linearise_abs
+                  ChantiersColumnNames, TachesColumnNames, RoulementsColumnNames, ORDERED_MACHINES)
+from model import MAJORANT
+from model_jalon2 import (MODEL, VARIABLES, CONTRAINTES,
+                          DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE, DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART,
+                          HORAIRES_ARRIVEES, HORAIRES_DEPARTS)
 
 import display_tools.display_agenda as dis_agenda
 import display_tools.compute_stats as dis_tracks
@@ -208,6 +209,8 @@ def add_constr_taches_humaines_simultanées():
         for attr_1 in DICT_TACHES_PAR_AGENT[agent_name]["Attribution"]:
             name_elts_1 = attr_1.split(sep="_")
             _, var_name_1 = attr_1.split(sep="_", maxsplit=1)
+            train_number_1 = name_elts_1[-1]
+            train_day_1 = name_elts_1[-2]
             horaire_debut_1 = VARIABLES[f"H_{var_name_1}"]
             chantier_1 = name_elts_1[5] # le chantier est stocké en position 5 dans le nom de variable
             type_train_1 = "ARR" if chantier_1 == "REC" else "DEP"
@@ -218,12 +221,34 @@ def add_constr_taches_humaines_simultanées():
                     continue
                 name_elts_2 = attr_2.split(sep="_")
                 _, var_name_2 = attr_2.split(sep="_", maxsplit=1)
+                train_number_2 = name_elts_2[-1]
+                train_day_2 = name_elts_2[-2]
                 horaire_debut_2 = VARIABLES[f"H_{var_name_2}"]
                 chantier_2 = name_elts_2[5] # le chantier est stocké en position 5 dans le nom de variable
                 type_train_2 = "ARR" if chantier_2 == "REC" else "DEP"
                 task_id_2 = name_elts_2[6]
                 horaire_fin_2 = horaire_debut_2 + DICT_TACHES[type_train_2+"_"+task_id_2]["Duree"]
-
+                # Preprocessing pour eviter des cas particuliers inutiles
+                if type_train_1 == type_train_2 == "ARR" and (
+                    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_1}_{train_number_1}"] < HORAIRES_ARRIVEES[f"{train_day_2}_{train_number_2}"]
+                    or DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_2}_{train_number_2}"] < HORAIRES_ARRIVEES[f"{train_day_1}_{train_number_1}"]
+                ):
+                    continue
+                if type_train_1 == type_train_2 == "DEP" and (
+                    DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_1}_{train_number_1}"] > HORAIRES_DEPARTS[f"{train_day_2}_{train_number_2}"]
+                    or DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_2}_{train_number_2}"] > HORAIRES_DEPARTS[f"{train_day_1}_{train_number_1}"]
+                ):
+                    continue
+                if type_train_1 == "ARR" and type_train_2 == "DEP" and (
+                    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_1}_{train_number_1}"] < DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_2}_{train_number_2}"]
+                    or HORAIRES_DEPARTS[f"{train_day_2}_{train_number_2}"] < HORAIRES_ARRIVEES[f"{train_day_1}_{train_number_1}"]
+                ):
+                    continue
+                if type_train_1 == "DEP" and type_train_2 == "ARR" and (
+                    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_2}_{train_number_2}"] < DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_1}_{train_number_1}"]
+                    or HORAIRES_DEPARTS[f"{train_day_1}_{train_number_1}"] < HORAIRES_ARRIVEES[f"{train_day_2}_{train_number_2}"]
+                ):
+                    continue
                 # var binaire delta_arr2_dep1
                 delta1_name = f"delta_Db2-inf-Fn1_{var_name_1}_{var_name_2}"
                 VARIABLES[delta1_name] = MODEL.addVar(vtype=GRB.BINARY, name=delta1_name)
@@ -267,6 +292,8 @@ def add_constr_indispos_chantiers_humains():
                                 var_cr_name = f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"
                                 new_cstr_name = f"Constr_indispo_chantier_{chantier}_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"
                                 CONTRAINTES[new_cstr_name] = MODEL.addConstr(VARIABLES[var_cr_name] == 0, name=new_cstr_name)
+                            else:
+                                pass
 
 def add_constr_respect_horaire_agent():
     for agent_name in tqdm(DICT_TACHES_PAR_AGENT, desc="Resp Horaires Agents"):
