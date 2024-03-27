@@ -25,6 +25,8 @@ ARRIVEES_CRENEAUX = ARRIVEES[ArriveesColumnNames.ARR_CRENEAU]
 DEPARTS_DATE = DEPARTS[DepartsColumnNames.DEP_DATE]
 DEPARTS_TR_NB = DEPARTS[DepartsColumnNames.DEP_TRAIN_NUMBER]
 DEPARTS_CRENEAUX = DEPARTS[DepartsColumnNames.DEP_CRENEAU]
+HORAIRES_ARRIVEES = {}
+HORAIRES_DEPARTS = {}
 
 ## VARIABLES
 # Variables de décision concernant l'occupation des voies (jalon 2)
@@ -184,13 +186,19 @@ DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE = {}
 for index in tqdm(ARRIVEES.index, desc="Dict MAX_DEPART_DU_TRAIN_ARRIVEE", colour="#0088ff") :
     jour = ARRIVEES_DATE[index]
     numero = ARRIVEES_TR_NB[index]
-    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[index] = max(composition_train_arrivee_creneau(DATA_DICT, (jour, numero)))  
+    max_dep = max(composition_train_arrivee_creneau(DATA_DICT, (jour, numero)))
+    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[index] = max_dep
+    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{jour}_{numero}"] = max_dep
+    HORAIRES_ARRIVEES[f"{jour}_{numero}"] = ARRIVEES_CRENEAUX[index]
 
 DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART = {}
 for index in tqdm(DEPARTS.index, desc="Dict MIN_ARRIVEE_DU_TRAIN_DEPART", colour="#0088ff") :
     jour = DEPARTS_DATE[index]
     numero = DEPARTS_TR_NB[index]
-    DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[index] = min(composition_train_depart_creneau(DATA_DICT, (jour, numero)))
+    min_arr = min(composition_train_depart_creneau(DATA_DICT, (jour, numero)))
+    DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[index] = min_arr
+    DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{jour}_{numero}"] = min_arr
+    HORAIRES_DEPARTS[f"{jour}_{numero}"] = DEPARTS_CRENEAUX[index]
 
 # Chantier "réception"
 for index_1 in tqdm(ARRIVEES.index, desc="Occupation WPY_REC", colour='#00ff00') :
