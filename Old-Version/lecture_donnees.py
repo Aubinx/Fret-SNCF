@@ -12,8 +12,12 @@ from util import (InstanceSheetNames, ChantiersColumnNames, CorrespondancesColum
 import horaires
 
 # Chemin d'accès du fichier contenant l'instance
-ALL_INSTANCES = ["mini_instance", "instance_WPY_simple", "instance_WPY_realiste_jalon1", "instance_WPY_intermediaire_jalon1"]
-INSTANCE = ALL_INSTANCES[1]
+ALL_INSTANCES = ["mini_instance",
+                 "instance_WPY_simple",
+                 "instance_WPY_realiste_jalon1",
+                 "instance_WPY_intermediaire_jalon1",
+                 "instance_WPY_realiste_jalon2"]
+INSTANCE = ALL_INSTANCES[4]
 INSTANCE_DIR = "Instances/" + INSTANCE
 INSTANCE_FILE = INSTANCE_DIR + ".xlsx"
 INSTANCE_PICKLE_FILE = INSTANCE_DIR + ".pkl"
