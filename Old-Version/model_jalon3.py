@@ -56,12 +56,12 @@ def add_vars_taches_humaines():
             for agent in range(1, nombre_agents + 1):
                 dict_agent_name = f"roul{roulement_id}_jour{str(jour)}_ag{str(agent)}"
                 DICT_TACHES_PAR_AGENT[dict_agent_name] = {"Cycle":[], "Attribution":[], "Horaire":[]}
-                for cycle in cycles :
-                    VARIABLES[f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle}"] = MODEL.addVar(
-                        name = f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle}",
+                for cycle_index in range(len(cycles)) :
+                    VARIABLES[f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"] = MODEL.addVar(
+                        name = f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}",
                         vtype = GRB.BINARY
                     )
-                    DICT_TACHES_PAR_AGENT[dict_agent_name]["Cycle"].append(f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle}")
+                    DICT_TACHES_PAR_AGENT[dict_agent_name]["Cycle"].append(f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}")
                     nb_variables_new += 1
                 for chantier in connaissances_chantiers :
                     taches_sub_chantier = TACHES_HUMAINES[TACHES_HUMAINES[TachesColumnNames.TASK_CHANTIER] == chantier]
@@ -99,8 +99,8 @@ def add_constr_agent_cycle_unique():
             cycles = ROULEMENTS_AGENTS[RoulementsColumnNames.ROUL_CYCLES][roulement_id].split(';')
             for agent_id in range(1, nombre_agents+1):
                 agent_somme_cycle = 0
-                for cycle in cycles:
-                    agent_somme_cycle += VARIABLES[f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent_id)}_cy{cycle}"]
+                for cycle_index in range(len(cycles)):
+                    agent_somme_cycle += VARIABLES[f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent_id)}_cy{cycle_index}"]
                 CONTRAINTES[f"Constr_AttrCycleUnique_{roulement_id}_jour{str(jour)}_ag{str(agent_id)}"] = MODEL.addConstr(agent_somme_cycle <= 1, name=f"Constr_AttrCycleUnique_{roulement_id}_jour{str(jour)}_ag{str(agent_id)}")
 
 # Créer des dictionnaires d'association entre taches
@@ -245,10 +245,13 @@ def add_constr_indispos_chantiers_humains():
             for chantier in connaissances_chantiers :
                 indispo_list = indispo_to_intervalle(DATA_DICT, "chantier", chantier)
                 for agent in range(1, nombre_agents + 1):
-                    for cycle in cycles:
+                    for cycle_index in range(len(cycles)):
+                        cycle = cycles[cycle_index]
                         debut_cycle, fin_cycle = cycle.split(sep="-")
-                        cr_name = f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle}"
-                        VARIABLES[cr_name]
+                        for debut_indisp, fin_indisp in indispo_list:
+                            if debut_cycle == debut_indisp and fin_cycle == fin_indisp:
+                                cr_name = f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"
+                                # CONTRAINTES[] = MODEL.addConstr(VARIABLES[cr_name]
     pass
 
 def add_constr_respect_horaire_agent():
@@ -262,4 +265,5 @@ add_constr_parallelisation_machines_humains()
 add_constr_taches_humaines_simultanées()
 MODEL.update()
 MODEL.optimize()
+MODEL.write(f"Outputs/out_{INSTANCE}_jalon3.sol")
 print("Nombre de variables ajoutées au modèle : ", nb_variables_new)
