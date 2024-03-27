@@ -271,7 +271,7 @@ def add_constr_taches_humaines_simultanées():
                                                     name=cstr_name)
 
 def add_constr_indispos_chantiers_humains():
-    for roulement_id in ROULEMENTS_AGENTS[RoulementsColumnNames.ROUL_NAME].index:
+    for roulement_id in tqdm(ROULEMENTS_AGENTS[RoulementsColumnNames.ROUL_NAME].index, desc="Indispos Chantier"):
         jours_dispos = [int(day) for day in ROULEMENTS_AGENTS[RoulementsColumnNames.ROUL_DAYS][roulement_id].split(sep=";")]
         for jour in ALL_DAYS:
             if not jour%7+1 in jours_dispos:
@@ -335,7 +335,7 @@ def creneaux_from_cycle(jour, cycle):
     return debut_cycle, fin_cycle
 
 def add_constr_attrib_tache_unique():
-    for tache in DICT_TACHES:
+    for tache in tqdm(DICT_TACHES, desc="Attrib Tache Unique"):
         for train in DICT_TACHES[tache]:
             if train == "Duree":
                 continue
@@ -363,11 +363,17 @@ add_constr_indispos_chantiers_humains()
 set_objective_jalon3()
 
 if __name__=='__main__':
+    print("Started calling model.update()")
     MODEL.update()
+    print("Finished model.update()")
     start_time = time.time()
     print("~~Time before optimization :", start_time - overall_start_time)
     print("~~Started optimizing.")
-    MODEL.write(f"Modeles/model_{INSTANCE}_jalon3.lp")
+    WRITE_PATH =f"Modeles/model_{INSTANCE}_jalon3.lp"
+    if not os.path.isfile(WRITE_PATH):
+        MODEL.write(WRITE_PATH)
+    else:
+        MODEL = read(WRITE_PATH)
     MODEL.optimize()
     opti_finished_time = time.time()
     print("~~Finished optimizing.\n~~Duration : ", opti_finished_time - start_time)
