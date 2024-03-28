@@ -42,6 +42,8 @@ class FretModelJal2(FretModel):
         self.create_model_objective_jalon2()
     
     def set_model_objective_jalon2(self):
+        """Ajoute au modèle la fonction objectif du jalon 2, à savoir :
+        minimiser le nombre maximal de voies occupées sur le chantier de formation"""
         self.model.setObjective(self.obj_function, GRB.MINIMIZE)
 
     def set_nb_voies_fromation(self, nb_voies:int=-2):

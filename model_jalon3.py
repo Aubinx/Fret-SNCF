@@ -61,9 +61,15 @@ class FretModelJal3(FretModelJal2):
         self.set_model_objective_jalon3()
 
     def set_model_objective_jalon3(self):
+        """Ajoute au modèle la fonction objectif du jalon 3, à savoir :\n
+        minimiser le nombre journées de services nécessaires pour réaliser l'ensemble des tâches"""
         self.model.setObjective(self.obj_function, GRB.MINIMIZE) 
 
     def add_vars_tertiary_taches_humaines(self):
+        """Ajoute les variables de décision pour le jalon 3\n
+        Variables binaires d'assignation d'un agent à un cycle horaire\n
+        Variables binaires d'attribution d'une tache à un agent\n
+        Variables entières de créneau de réalisation de la tâche par l'agent\n"""
         for roulement_id in self.roulements()[RoulementsColumnNames.ROUL_NAME].index:
             jours_dispos = [int(day) for day in self.roulements()[RoulementsColumnNames.ROUL_DAYS][roulement_id].split(sep=";")]
             for jour in self.all_days:
@@ -108,6 +114,7 @@ class FretModelJal3(FretModelJal2):
                                 self.dict_taches_par_agent[dict_agent_name]["Horaire"].append(f"H_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}")
 
     def add_constr_agent_cycle_unique(self):
+        """Contrainte pour que chaque agent soit assigné à au plus un cycle horaire par jour"""
         for jour in self.all_days:
             for roulement_id in self.roulements().index:
                 jours_dispos = [int(day) for day in self.roulements()[RoulementsColumnNames.ROUL_DAYS][roulement_id].split(sep=";")]
@@ -123,6 +130,7 @@ class FretModelJal3(FretModelJal2):
 
     # override
     def add_constr_ordre_taches_arrivee(self):
+        """Contrainte sur l'ordre de réalisation des tâches sur les trains à l'arrivée"""
         # ARR_1 après arrivée du train
         for train_name in self.dict_taches["ARR_1"]:
             if train_name == "Duree":
@@ -154,6 +162,7 @@ class FretModelJal3(FretModelJal2):
 
     # override
     def add_constr_ordre_taches_depart(self):
+        """Contrainte sur l'ordre de réalisation des tâches sur les trains au départ"""
         for train_name in self.dict_taches["DEP_2"]:
             if train_name == "Duree":
                 continue
@@ -203,6 +212,7 @@ class FretModelJal3(FretModelJal2):
                 self.contraintes[f"Constr_ordre_dep3simultDEG_{grb_var_name}"] = self.model.addConstr(self.variables[grb_var_name] == self.variables[f"Train_DEP_{train_day}_{train_number}_DEG"], name=f"Constr_ordre_dep3simultDEG_{grb_var_name}")
 
     def add_constr_taches_humaines_simultanées(self):
+        """Contrainte pour s'assurer que chaque agent ne réalise pas plus d'une tâche en même temps"""
         for agent_name in tqdm(self.dict_taches_par_agent, desc="Taches Simult Agent"):
             for attr_1 in self.dict_taches_par_agent[agent_name]["Attribution"]:
                 name_elts_1 = attr_1.split(sep="_")
@@ -267,6 +277,7 @@ class FretModelJal3(FretModelJal2):
                                                         name=cstr_name)
 
     def add_constr_indispos_chantiers_humains(self):
+        """Contrainte pour que les créneaux des tâches humaines prennent en compte les indisponibilités des chantiers"""
         for roulement_id in tqdm(self.roulements()[RoulementsColumnNames.ROUL_NAME].index, desc="Indispos Chantier"):
             jours_dispos = [int(day) for day in self.roulements()[RoulementsColumnNames.ROUL_DAYS][roulement_id].split(sep=";")]
             for jour in self.all_days:
@@ -314,8 +325,8 @@ class FretModelJal3(FretModelJal2):
                                     lin_abs = self.linearise_abs(to_abs, name_new_var)
                                     self.contraintes[cstr_name] = self.model.addConstr(lin_abs >= end_interdit - start_interdit + duree_task, name=cstr_name)
 
-
     def add_constr_respect_horaire_agent(self):
+        """Contrainte qui vérifie que toute tâche attribuée à un agent est bien réalisée pendant son cycle horaire"""
         for agent_name in tqdm(self.dict_taches_par_agent, desc="Resp Horaires Agents"):
             horaire_debut_travail = 0
             horaire_fin_travail = 0
@@ -343,6 +354,7 @@ class FretModelJal3(FretModelJal2):
                 self.contraintes[constr_name] = self.model.addConstr(self.variables[var_tache] + duree <= horaire_fin_travail + (1-self.variables[var_attrib]) * self.MAJORANT, name=constr_name)
 
     def creneaux_from_cycle(self, jour, cycle):
+        """Fonction utilitaire pour trouver les créneaux de départ et de fin d'un cycle"""
         debut_cycle_str, fin_cycle_str = cycle.split(sep="-")
         debut_cycle_datetime = datetime.datetime.strptime(debut_cycle_str, "%H:%M")
         fin_cycle_datetime = datetime.datetime.strptime(fin_cycle_str, "%H:%M")
@@ -353,6 +365,7 @@ class FretModelJal3(FretModelJal2):
         return debut_cycle, fin_cycle
 
     def add_constr_attrib_tache_unique(self):
+        """Contrainte qui vérifie que chaque tâche à réaliser est attribuée à un agent"""
         for tache in tqdm(self.dict_taches, desc="Attrib Tache Unique"):
             for train in self.dict_taches[tache]:
                 if train == "Duree":
@@ -364,6 +377,7 @@ class FretModelJal3(FretModelJal2):
                 self.contraintes[cstr_name] = self.model.addConstr(somme_attribs == 1, name=cstr_name)
 
     def create_model_objective_jalon3(self):
+        """Crée et stocke dans `self.obj_function` la fonction objectif à optimiser au jalon 3"""
         objective = 0
         for agent_name in self.dict_taches_par_agent:
             for var_cycle in self.dict_taches_par_agent[agent_name]["Cycle"]:

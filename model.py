@@ -36,7 +36,7 @@ class FretModel:
         self.contraintes = {}
 
     def load_whole_model(self):
-        """Charge l'ensemble des variables et contraintes du modèle jusqu'au `jalon` demandé"""
+        """Charge l'ensemble des variables et contraintes du modèle"""
         self.add_vars_primary_trains()
         self.add_constr_ordre_taches_arrivee()
         self.add_constr_ordre_taches_depart()
