@@ -22,6 +22,6 @@ Ensuite il y a plusieurs fichiers :
 - `util.py` : un fichier utilitaire regroupant différentes classes qui facilitent le reste du code.
 - et enfin, ce Readme. :wink:
 
-Pour que tous les codes puissent bien s'exécuter, il faut veiller à créer encore deux dossiers à la racine de ce répôt : "Outputs" et "Modeles". Ces dossiers seront utilisés pour écrire respectivement les fichiers de sortie du modèle (fichiers `excel` créés par `output.py` et fichier `.sol` créés par gurobi dans `main.py`) et les modèles gurobi juste avant optimisation sous le format `.lp` créés par gurobi dans `main.py`
+Pour que tous les codes puissent bien s'exécuter, il faut veiller à créer deux dossiers supplémentaires à la racine de ce répôt : "Outputs" et "Modeles". Ces dossiers seront utilisés pour écrire respectivement les fichiers de sortie du modèle (fichiers `excel` créés par `output.py` et fichier `.sol` créés par gurobi dans `main.py`) et les modèles gurobi juste avant optimisation sous le format `.lp` créés par gurobi dans `main.py`.
 
 Bon voyage dans ce répôt Git ! :roller_coaster: :runner:
