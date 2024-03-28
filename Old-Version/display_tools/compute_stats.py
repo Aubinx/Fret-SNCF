@@ -2,8 +2,9 @@ from datetime import datetime, timedelta
 import numpy as np
 from util import ArriveesColumnNames, DepartsColumnNames
 
+import horaires
 from display_tools.display_track_occupation import displays_track_occupation
-
+from display_tools.display_human_tasks import display_human_tasks
 def generate_worksites(extrema):
     start_date, end_date = extrema
     delta_time = end_date - start_date
@@ -79,3 +80,48 @@ def full_process_stats(extrema, solved_variables, arrivees, departs, nombre_voie
 
     #print(dictionnaire)
     displays_track_occupation(earliest, lastest, dictionnaire, occupations_max, nombre_voies)
+
+def extract_infos_from_var_name(var_name):
+    """ Retruns the name of the agent """
+    items = var_name.split('_')
+
+    jour, roulement, id_agent = int(items[2][4:]), int(items[1][4:]), int(items[3][2:])
+    chantier, id_tache, train = items[5], items[6], f'{items[8]}_{items[9]}'
+    return (jour, roulement, id_agent), (chantier, id_tache, train)
+
+
+def date_code_to_datetime(date_code, ref_day):
+    """ Converts the value of the variable to a proper datetime """
+    date_tuple = horaires.entier_vers_triplet(int(date_code))
+    day, hour, minute = date_tuple
+    return ref_day.replace(hour=hour, minute=minute) + timedelta(days=day-1)
+
+
+def full_process_human_tasks(solved_variables, ref_day):
+    """ Executes the full computation of human tasks on one 3x8 work day """
+    # "Attr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}"
+    day, month, year = ref_day.split('/')
+    ref_day = datetime(int(year), int(month), int(day))
+
+    distinct_agents = {}
+    for variable_name, variable in solved_variables.items():
+        if 'Attr_roul' in variable_name:
+            if variable.x==0:
+                continue
+
+            (_j, _r, _a), tache = extract_infos_from_var_name(variable_name)
+            tache = (tache,
+                     date_code_to_datetime(
+                         solved_variables[f'H_roul{variable_name[9:]}'].x, ref_day))
+            if _j not in distinct_agents:
+                distinct_agents[_j]={_r:{_a:[tache]}}
+            else:
+                if _r not in distinct_agents[_j]:
+                    distinct_agents[_j][_r]={_a:[tache]}
+                else:
+                    if _a not in distinct_agents[_j][_r]:
+                        distinct_agents[_j][_r][_a] = [tache]
+                    else:
+                        distinct_agents[_j][_r][_a].append(tache)
+
+    display_human_tasks(distinct_agents, ref_day)

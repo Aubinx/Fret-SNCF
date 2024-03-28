@@ -38,7 +38,12 @@ def add_task_to_agenda(fig, start_time, end_time, names, color, ref_day):
         start = ref_day.replace(hour=start_time.hour, minute=start_time.minute)
         # End
         end = ref_day.replace(hour=end_time.hour, minute=end_time.minute)
-
+        _h =  start.hour if start.hour!=0 else '00'
+        _m = start.minute if start.minute>=10 else f'0{start.minute}'
+        str_hour_min = f'{_h}h{_m}'
+        _h =  end.hour if end.hour!=0 else '00'
+        _m = end.minute if end.minute>=10 else f'0{end.minute}'
+        str_hour_max = f'{_h}h{_m}'
         train, task_name = names
         assert task_name in ('DEB', 'FOR', 'DEG'), f'Task was named {task_name}'
         possible_levels = ('DEB', 'FOR', 'DEG')
@@ -50,7 +55,9 @@ def add_task_to_agenda(fig, start_time, end_time, names, color, ref_day):
                 fill='toself',
                 mode='lines',
                 line={'color':color},
-                name=train))
+                text=f'{train}<br>Arrivée : {str_hour_min}<br>Départ : {str_hour_max}',
+                hoverinfo='text'
+                ))
         difference = end - start
         _x = start + difference / 2
         _y= delta_day+1/6

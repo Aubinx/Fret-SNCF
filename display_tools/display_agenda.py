@@ -190,7 +190,7 @@ def import_arrival_from_model(fig, arrival_pandas, start_date, color_codes):
             x=[creneau_arrivee, creneau_arrivee],
             y=[delta_day, delta_day+1],
             mode="lines",
-            line=dict(color=color, width=2, dash="dashdot"),
+            line={'color':color, 'width':2, 'dash':"dashdot"},
             name=str_train,
             hoverinfo="name"  # Show the name when hovering over the line
 ))
@@ -216,7 +216,7 @@ def import_departures_from_model(fig, departures_pandas, start_date, color_codes
             x=[creneau_dep, creneau_dep],
             y=[delta_day, delta_day+1],
             mode="lines",
-            line=dict(color=color, width=2, dash="solid"),
+            line={'color':color, 'width':2, 'dash':"solid"},
             name=str_train,
             hoverinfo="name"  # Show the name when hovering over the line
         ))
@@ -231,9 +231,10 @@ def displays_machine_indisponibilities(fig, indisponibilities, start_date):
         machine, t_min, t_max = indispo
         date_min = date_code_to_date_time(horaires.entier_vers_triplet(int(t_min)))
         date_max = date_code_to_date_time(horaires.entier_vers_triplet(int(t_max)))
-        add_task_to_agenda(fig, date_min, date_max, ('Indisponibilité', machine), '#AAAAAA', start_date)
+        add_task_to_agenda(fig, date_min, date_max, ('Indisponibilité', machine),
+                           '#AAAAAA', start_date)
 
-    
+
 def full_process(solved_variables, extrema, arrival_pandas, departures_pandas, indisponibilities):
     """ Displays the agenda with the whole data """
     tasks, color_codes, (start_date, end_date) = import_tasks_from_model(

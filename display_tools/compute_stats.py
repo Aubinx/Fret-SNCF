@@ -79,3 +79,34 @@ def full_process_stats(extrema, solved_variables, arrivees, departs, nombre_voie
 
     #print(dictionnaire)
     displays_track_occupation(earliest, lastest, dictionnaire, occupations_max, nombre_voies)
+
+
+
+def generate_workers_plannings(solved_variables):
+    """ Creates empty plannings for each workers that have at least a task """
+    
+    
+    
+    
+    
+def full_process_human_tasks(solved_variables):#extrema, solved_variables, arrivees, departs):
+    """ Executes the full computation of human tasks on one 3x8 work day """
+    # "Attr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_{chantier}_{task_name}_train_{train_day}_{train_number}"
+    for var in solved_variables:
+        if 'Attr_roul' in var:
+            print(var, var.x)
+    
+    # earliest, lastest = extrema
+    # day, month, year = earliest.split('/')
+    # earliest = datetime(int(year), int(month), int(day), hour=0, minute=0)
+    # day, month, year = lastest.split('/')
+    # lastest = datetime(int(year), int(month), int(day), hour=23, minute=59)
+
+    # worksites = generate_worksites((earliest, lastest))
+
+    # remplissage_voies(worksites, solved_variables, arrivees, departs)
+    # dictionnaire, occupations_max = rewriting_stats(worksites, earliest)
+
+    # #print(dictionnaire)
+    # displays_track_occupation(earliest, lastest, dictionnaire, occupations_max)
+
