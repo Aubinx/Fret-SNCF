@@ -250,16 +250,16 @@ class FretModelJal3(FretModelJal2):
                     # var binaire delta_arr2_dep1
                     delta1_name = f"delta_Db2-inf-Fn1_{var_name_1}_{var_name_2}"
                     self.variables[delta1_name] = self.model.addVar(vtype=GRB.BINARY, name=delta1_name)
-                    self.contraintes["Constr1"+delta1_name] = self.model.addConstr(self.MAJORANT * (1 - self.variables[delta1_name]) >= horaire_debut_2 - horaire_fin_1,
+                    self.contraintes["Constr1"+delta1_name] = self.model.addConstr(self.MAJORANT * (1 - self.variables[delta1_name]) >= horaire_debut_2 - horaire_fin_1 + self.EPSILON,
                                                                         name="Constr1_"+delta1_name)
-                    self.contraintes["Constr2"+delta1_name] = self.model.addConstr(- self.MAJORANT * self.variables[delta1_name] <= horaire_debut_2 - horaire_fin_1,
+                    self.contraintes["Constr2"+delta1_name] = self.model.addConstr(- self.MAJORANT * self.variables[delta1_name] <= horaire_debut_2 - horaire_fin_1 + self.EPSILON,
                                                                         name="Constr2_"+delta1_name)
                     # var binaire delta_arr1_dep2
                     delta2_name = f"delta_Fn2-inf-Db1_{var_name_1}_{var_name_2}"
                     self.variables[delta2_name] = self.model.addVar(vtype=GRB.BINARY, name=delta2_name)
-                    self.contraintes["Constr1"+delta2_name] = self.model.addConstr(self.MAJORANT * (1 - self.variables[delta2_name]) >= horaire_fin_2 - horaire_debut_1,
+                    self.contraintes["Constr1"+delta2_name] = self.model.addConstr(self.MAJORANT * (1 - self.variables[delta2_name]) >= horaire_fin_2 - horaire_debut_1 + self.EPSILON,
                                                                         name="Constr1"+delta2_name)
-                    self.contraintes["Constr2"+delta2_name] = self.model.addConstr(- self.MAJORANT * self.variables[delta2_name] <= horaire_fin_2 - horaire_debut_1,
+                    self.contraintes["Constr2"+delta2_name] = self.model.addConstr(- self.MAJORANT * self.variables[delta2_name] <= horaire_fin_2 - horaire_debut_1 + self.EPSILON,
                                                                         name="Constr2"+delta2_name)
                     # Contrainte tâches agent simultanées
                     cstr_name = f"Constr_TacheAgentSimult_{var_name_1}_{var_name_2}"
@@ -278,19 +278,42 @@ class FretModelJal3(FretModelJal2):
                 for chantier in connaissances_chantiers :
                     indispo_list = donnees_trains.indispo_to_intervalle(self.data, "chantier", chantier)
                     for agent in range(1, nombre_agents + 1):
-                        for cycle_index in range(len(cycles)):
-                            cycle = cycles[cycle_index]
-                            debut_cycle, fin_cycle = cycle.split(sep="-")
-                            debut_cycle = horaires.triplet_vers_entier(jour, int(debut_cycle.split(sep=":")[0]), int(debut_cycle.split(sep=":")[1]))
-                            fin_cycle = horaires.triplet_vers_entier(jour, int(fin_cycle.split(sep=":")[0]), int(fin_cycle.split(sep=":")[1]))
-                            for debut_indisp, fin_indisp in indispo_list:
+                        for debut_indisp, fin_indisp in indispo_list:
+                            for cycle_index in range(len(cycles)):
+                                cycle = cycles[cycle_index]
+                                debut_cycle, fin_cycle = cycle.split(sep="-")
+                                debut_cycle = horaires.triplet_vers_entier(jour, int(debut_cycle.split(sep=":")[0]), int(debut_cycle.split(sep=":")[1]))
+                                fin_cycle = horaires.triplet_vers_entier(jour, int(fin_cycle.split(sep=":")[0]), int(fin_cycle.split(sep=":")[1]))
+                                # si l'indisponibilité correspond exactement à un cycle horaire entier
                                 if debut_cycle == debut_indisp and fin_cycle == fin_indisp:
                                     var_cr_name = f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"
                                     new_cstr_name = f"Constr_indispo_chantier_{chantier}_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"
                                     self.contraintes[new_cstr_name] = self.model.addConstr(self.variables[var_cr_name] == 0, name=new_cstr_name)
+                                    continue
+                                # si l'indisponiblité se superpose pariellement avec un cycle horaire
+                                elif debut_cycle < debut_indisp and fin_cycle > fin_indisp:
+                                    start_interdit = debut_indisp
+                                    end_interdit = fin_indisp
+                                elif debut_cycle < debut_indisp and debut_indisp < fin_cycle < fin_indisp:
+                                    start_interdit = debut_indisp
+                                    end_interdit = fin_cycle
+                                elif debut_indisp < debut_cycle < fin_indisp and fin_cycle > fin_indisp:
+                                    start_interdit = debut_cycle
+                                    end_interdit = fin_indisp
+                                # sinon, l'indisponibilité et le cycle sont disjoints -> rien à faire
                                 else:
-                                    # TODO 
-                                    pass
+                                    continue
+                                dict_agent_name = f"roul{roulement_id}_jour{str(jour)}_ag{str(agent)}"
+                                for var_tache in self.dict_taches_par_agent[dict_agent_name]["Horaire"]:
+                                    type_train = "ARR" if chantier == "REC" else "DEP"
+                                    task_id = var_tache.split(sep="_")[6]
+                                    duree_task = self.dict_taches[type_train+"_"+task_id]["Duree"]
+                                    to_abs = 2 * self.variables[var_tache] - (end_interdit + start_interdit - duree_task)
+                                    name_new_var = f"INDISPO_{chantier}_{var_tache}"
+                                    cstr_name = "Constr_"+name_new_var
+                                    lin_abs = self.linearise_abs(to_abs, name_new_var)
+                                    self.contraintes[cstr_name] = self.model.addConstr(lin_abs >= end_interdit - start_interdit + duree_task, name=cstr_name)
+
 
     def add_constr_respect_horaire_agent(self):
         for agent_name in tqdm(self.dict_taches_par_agent, desc="Resp Horaires Agents"):
@@ -310,7 +333,6 @@ class FretModelJal3(FretModelJal2):
             for var_tache in self.dict_taches_par_agent[agent_name]["Horaire"]:
                 var_attrib = "Attr_"+var_tache[2::]
                 constr_name = f"RespHorairesAgent_Start_{var_tache}"
-                # self.contraintes[constr_name] = self.model.addConstr(self.variables[var_tache] >= horaire_debut_travail, name=constr_name)
                 self.contraintes[constr_name] = self.model.addConstr(self.variables[var_tache] + (1-self.variables[var_attrib]) * self.MAJORANT >= horaire_debut_travail, name=constr_name)
                 _, var_name = var_tache.split(sep="_", maxsplit=1)
                 chantier = var_name.split(sep="_")[4]
@@ -318,7 +340,6 @@ class FretModelJal3(FretModelJal2):
                 task_id = var_name.split(sep="_")[5]
                 duree = self.dict_taches[type_train+"_"+task_id]["Duree"]
                 constr_name = f"RespHorairesAgent_End_{var_tache}"
-                # self.contraintes[constr_name] = self.model.addConstr(self.variables[var_tache] + duree <= horaire_fin_travail, name=constr_name)
                 self.contraintes[constr_name] = self.model.addConstr(self.variables[var_tache] + duree <= horaire_fin_travail + (1-self.variables[var_attrib]) * self.MAJORANT, name=constr_name)
 
     def creneaux_from_cycle(self, jour, cycle):

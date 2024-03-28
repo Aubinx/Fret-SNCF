@@ -7,7 +7,7 @@ from lecture_donnees import (INSTANCE, ARRIVEES, DEPARTS, DATA_DICT,
                              indispo_to_intervalle, get_all_days_as_numbers)
 from util import (InstanceSheetNames, ArriveesColumnNames, DepartsColumnNames,
                   ChantiersColumnNames, TachesColumnNames, RoulementsColumnNames, ORDERED_MACHINES)
-from model import MAJORANT
+from model import MAJORANT, linearise_abs
 from model_jalon2 import (MODEL, VARIABLES, CONTRAINTES,
                           DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE, DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART,
                           HORAIRES_ARRIVEES, HORAIRES_DEPARTS)
@@ -249,21 +249,21 @@ def add_constr_taches_humaines_simultanées():
                     or HORAIRES_DEPARTS[f"{train_day_1}_{train_number_1}"] <= HORAIRES_ARRIVEES[f"{train_day_2}_{train_number_2}"]
                 ):
                     continue
-                # var binaire delta_arr2_dep1
+                # var binaire delta_debut2_fin1
                 delta1_name = f"delta_Db2-inf-Fn1_{var_name_1}_{var_name_2}"
                 VARIABLES[delta1_name] = MODEL.addVar(vtype=GRB.BINARY, name=delta1_name)
                 nb_var_secondaires_new += 1
-                CONTRAINTES["Constr1"+delta1_name] = MODEL.addConstr(MAJORANT * (1 - VARIABLES[delta1_name]) >= horaire_debut_2 - horaire_fin_1,
+                CONTRAINTES["Constr1"+delta1_name] = MODEL.addConstr(MAJORANT * (1 - VARIABLES[delta1_name]) >= horaire_debut_2 - horaire_fin_1 + EPSILON,
                                                                     name="Constr1_"+delta1_name)
-                CONTRAINTES["Constr2"+delta1_name] = MODEL.addConstr(- MAJORANT * VARIABLES[delta1_name] <= horaire_debut_2 - horaire_fin_1,
+                CONTRAINTES["Constr2"+delta1_name] = MODEL.addConstr(- MAJORANT * VARIABLES[delta1_name] <= horaire_debut_2 - horaire_fin_1 + EPSILON,
                                                                     name="Constr2_"+delta1_name)
-                # var binaire delta_arr1_dep2
+                # var binaire delta_debut1_fin2
                 delta2_name = f"delta_Fn2-inf-Db1_{var_name_1}_{var_name_2}"
                 VARIABLES[delta2_name] = MODEL.addVar(vtype=GRB.BINARY, name=delta2_name)
                 nb_var_secondaires_new += 1
-                CONTRAINTES["Constr1"+delta2_name] = MODEL.addConstr(MAJORANT * (1 - VARIABLES[delta2_name]) >= horaire_fin_2 - horaire_debut_1,
+                CONTRAINTES["Constr1"+delta2_name] = MODEL.addConstr(MAJORANT * (1 - VARIABLES[delta2_name]) >= horaire_fin_2 - horaire_debut_1 + EPSILON,
                                                                     name="Constr1"+delta2_name)
-                CONTRAINTES["Constr2"+delta2_name] = MODEL.addConstr(- MAJORANT * VARIABLES[delta2_name] <= horaire_fin_2 - horaire_debut_1,
+                CONTRAINTES["Constr2"+delta2_name] = MODEL.addConstr(- MAJORANT * VARIABLES[delta2_name] <= horaire_fin_2 - horaire_debut_1 + EPSILON,
                                                                     name="Constr2"+delta2_name)
                 # Contrainte tâches agent simultanées
                 cstr_name = f"Constr_TacheAgentSimult_{var_name_1}_{var_name_2}"
@@ -282,18 +282,41 @@ def add_constr_indispos_chantiers_humains():
             for chantier in connaissances_chantiers :
                 indispo_list = indispo_to_intervalle(DATA_DICT, "chantier", chantier)
                 for agent in range(1, nombre_agents + 1):
-                    for cycle_index in range(len(cycles)):
-                        cycle = cycles[cycle_index]
-                        debut_cycle, fin_cycle = cycle.split(sep="-")
-                        debut_cycle = horaires.triplet_vers_entier(jour, int(debut_cycle.split(sep=":")[0]), int(debut_cycle.split(sep=":")[1]))
-                        fin_cycle = horaires.triplet_vers_entier(jour, int(fin_cycle.split(sep=":")[0]), int(fin_cycle.split(sep=":")[1]))
-                        for debut_indisp, fin_indisp in indispo_list:
+                    for debut_indisp, fin_indisp in indispo_list:
+                        for cycle_index in range(len(cycles)):
+                            cycle = cycles[cycle_index]
+                            debut_cycle, fin_cycle = cycle.split(sep="-")
+                            debut_cycle = horaires.triplet_vers_entier(jour, int(debut_cycle.split(sep=":")[0]), int(debut_cycle.split(sep=":")[1]))
+                            fin_cycle = horaires.triplet_vers_entier(jour, int(fin_cycle.split(sep=":")[0]), int(fin_cycle.split(sep=":")[1]))
+                            # si l'indisponibilité correspond exactement à un cycle horaire entier
                             if debut_cycle == debut_indisp and fin_cycle == fin_indisp:
                                 var_cr_name = f"Cr_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"
                                 new_cstr_name = f"Constr_indispo_chantier_{chantier}_roul{roulement_id}_jour{str(jour)}_ag{str(agent)}_cy{cycle_index}"
                                 CONTRAINTES[new_cstr_name] = MODEL.addConstr(VARIABLES[var_cr_name] == 0, name=new_cstr_name)
+                                continue
+                            # si l'indisponiblité se superpose pariellement avec un cycle horaire
+                            elif debut_cycle < debut_indisp and fin_cycle > fin_indisp:
+                                start_interdit = debut_indisp
+                                end_interdit = fin_indisp
+                            elif debut_cycle < debut_indisp and debut_indisp < fin_cycle < fin_indisp:
+                                start_interdit = debut_indisp
+                                end_interdit = fin_cycle
+                            elif debut_indisp < debut_cycle < fin_indisp and fin_cycle > fin_indisp:
+                                start_interdit = debut_cycle
+                                end_interdit = fin_indisp
+                            # sinon, l'indisponibilité et le cycle sont disjoints -> rien à faire
                             else:
-                                pass
+                                continue
+                            dict_agent_name = f"roul{roulement_id}_jour{str(jour)}_ag{str(agent)}"
+                            for var_tache in DICT_TACHES_PAR_AGENT[dict_agent_name]["Horaire"]:
+                                type_train = "ARR" if chantier == "REC" else "DEP"
+                                task_id = var_tache.split(sep="_")[6]
+                                duree_task = DICT_TACHES[type_train+"_"+task_id]["Duree"]
+                                to_abs = 2 * VARIABLES[var_tache] - (end_interdit + start_interdit - duree_task)
+                                name_new_var = f"INDISPO_{chantier}_{var_tache}"
+                                cstr_name = "Constr_"+name_new_var
+                                lin_abs = linearise_abs(MODEL, to_abs, name_new_var, VARIABLES, CONTRAINTES, MAJORANT)
+                                CONTRAINTES[cstr_name] = MODEL.addConstr(lin_abs >= end_interdit - start_interdit + duree_task, name=cstr_name)
 
 def add_constr_respect_horaire_agent():
     for agent_name in tqdm(DICT_TACHES_PAR_AGENT, desc="Resp Horaires Agents"):
@@ -313,7 +336,6 @@ def add_constr_respect_horaire_agent():
         for var_tache in DICT_TACHES_PAR_AGENT[agent_name]["Horaire"]:
             var_attrib = "Attr_"+var_tache[2::]
             constr_name = f"RespHorairesAgent_Start_{var_tache}"
-            # CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] >= horaire_debut_travail, name=constr_name)
             CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] + (1-VARIABLES[var_attrib]) * MAJORANT >= horaire_debut_travail, name=constr_name)
             _, var_name = var_tache.split(sep="_", maxsplit=1)
             chantier = var_name.split(sep="_")[4]
@@ -321,7 +343,6 @@ def add_constr_respect_horaire_agent():
             task_id = var_name.split(sep="_")[5]
             duree = DICT_TACHES[type_train+"_"+task_id]["Duree"]
             constr_name = f"RespHorairesAgent_End_{var_tache}"
-            # CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] + duree <= horaire_fin_travail, name=constr_name)
             CONTRAINTES[constr_name] = MODEL.addConstr(VARIABLES[var_tache] + duree <= horaire_fin_travail + (1-VARIABLES[var_attrib]) * MAJORANT, name=constr_name)
 
 def creneaux_from_cycle(jour, cycle):
