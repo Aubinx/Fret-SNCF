@@ -20,7 +20,8 @@ re_hour_min_sec = re.compile('\\d{2}:\\d{2}:\\d{2}') # HH:MM:SS
 ALL_INSTANCES = ["mini_instance",
                  "instance_WPY_simple",
                  "instance_WPY_realiste_jalon1",
-                 "instance_WPY_intermediaire_jalon1"]
+                 "instance_WPY_intermediaire_jalon1",
+                 "instance_WPY_realiste_jalon2"]
 
 ## CHARGER L'INSTANCE
 def load_instance(file_path) -> dict:
