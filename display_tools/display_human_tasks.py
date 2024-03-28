@@ -3,86 +3,81 @@
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 
-from display_tools.color import  create_color_scale
-
-MARGE = 1/30
-
-def add_filling_level(fig, start_time, end_time, filling_level, nb_voies, worksite, max_occup, ref_day):
-    """ Add a period of equi-filling level to the displayed agenda """
-    delta_day = start_time.replace(hour=0, minute=0)-ref_day.replace(hour=0, minute=0)
-    delta_day = delta_day.days
-
-    # Tests whereas the event is over two days
-    lenght =  end_time.replace(hour=0, minute=0)-start_time.replace(hour=0, minute=0)
-    lenght = lenght.days
-    if lenght>=1:
-        # We need to split the event in multiple ones
-        # The event is splited into the one on the first day and the rest
-        new_end = start_time.replace(hour=23, minute=59)
-        add_filling_level(fig, start_time, new_end, filling_level,
-                          nb_voies, worksite, max_occup, ref_day)
-        next_task_start = start_time.replace(hour=0, minute=0) + timedelta(days=1)
-        add_filling_level(fig, next_task_start, end_time,
-                          filling_level, nb_voies, worksite, max_occup, ref_day)
-    else:
-        # Start
-        start = ref_day.replace(hour=start_time.hour, minute=start_time.minute)
-        # End
-        end = ref_day.replace(hour=end_time.hour, minute=end_time.minute)
-
-        possible_worsites = ('REC', 'FOR', 'DEP')
-        assert worksite in possible_worsites, 'Wrong worksite'
-        offset = {'REC':1.5*MARGE, 'FOR':0, 'DEP':-1.5*MARGE}
-        #dict_color = {'REC':(255, 0, 0), 'FOR':(0, 255, 0), 'DEP':(0, 0, 255)}
-        level = possible_worsites.index(worksite)
-        delta_day += level/3 + offset[worksite]
-        relative_occupation = filling_level/int(nb_voies[level])
-        color = create_color_scale(relative_occupation, max_occup/int(nb_voies[level]),
-                                   _color1=(0,255,0), _color2=(255,0,0))
-        _h =  start_time.hour if start_time.hour!=0 else '00'
-        _m =  start_time.minute if start_time.minute!=0 else '00'
-        str_hour_min = f'{_h}h{_m}'
-        _h =  end_time.hour if end_time.hour!=0 else '00'
-        _m =  end_time.minute if end_time.minute!=0 else '00'
-        str_hour_max = f'{_h}h{_m}'
-        fig.add_trace(go.Scatter(
+def add_human_task(figure, start, end, level, liste_id):
+    """ Dispalys a rectangle for the human task """
+    id_task, id_roulement, id_agent, id_chantier, str_train = liste_id
+    couleur = {'REC':'blue', 'FOR':'red', 'DEP':'green'}[id_chantier]
+    _h =  start.hour if start.hour!=0 else '00'
+    _m = start.minute if start.minute>=10 else f'0{start.minute}'
+    str_hour_min = f'{_h}h{_m}'
+    _h =  end.hour if end.hour!=0 else '00'
+    _m = end.minute if end.minute>=10 else f'0{end.minute}'
+    str_hour_max = f'{_h}h{_m}'
+    str_tache = {
+        'REC':['arrivée Reception', 'préparation tri', 'débranchement'],
+        'FOR':['appui voie + mise en place câle', 'attelage véhicules',
+            'dégarage / bouger de rame'],
+        'DEP':{3:'essai de frein départ'}
+                }[id_chantier][int(id_task)-1]
+    str_roulement =['roulement_reception', 'roulement_formation',
+                'roulement_depart', 'roulement_reception_depart',
+                'roulement_formation_depart'][int(id_roulement)]
+    figure.add_trace(go.Scatter(
                 x=[start, end, end, start, start],
-                y=[delta_day+MARGE, delta_day+MARGE,
-                   delta_day+1/3-MARGE, delta_day+1/3-MARGE, delta_day+MARGE],
+                y=[level, level, level+1, level+1, level],
                 fill='toself',
                 mode='lines',
-                line={'color':color},
-                text=f'Chantier: {worksite}<br>Occupation: {100*round(relative_occupation, 4)}%\
-                    <br>Voies utilisées : {int(filling_level)} / {nb_voies[level]}\
-                    <br>Heure de début : {str_hour_min}<br>Heure de fin : {str_hour_max}',
+                line={'color':couleur},
+                text=f'Chantier : {id_chantier}<br>Tâche : {str_tache}\
+                    <br>Début : {str_hour_min}<br>Fin : {str_hour_max}\
+                    <br>Roulement : {str_roulement}<br>Agent n°{id_agent}\
+                    <br>Train : {str_train}',
                 hoverinfo='text'# Display custom text on hover
                         )
                       )
 
-def displays_track_occupation(start, end, filling_levels, occupations_max, nombre_voies):
+def displays_human_tasks_1_day(id_day, tasks, ref_day):
     """ Generates the Plotly Fig and displays an agenda """
-    # Création des heures et jours de la semaine
-    delta_days = end - start
-    delta_days = delta_days.days +1
-
+    ref_day = ref_day + timedelta(days=id_day-1)
+    # Dictionnaire des durées des tâches
+    durees = {
+        'REC':[15,45,15],
+        'FOR':[15,150,15],
+        'DEP':{3:20}
+        }
     # Création du tableau
     fig = go.Figure()
-    ref_day = start.replace(hour=0, minute=0)
-    # Ajout de différentes tâches
-    for worksite, data in filling_levels.items():
-        dates, levels = data
-        max_occup = occupations_max[worksite]
-        for i, level in enumerate(levels):
-            add_filling_level(fig, dates[i], dates[i+1], level, nombre_voies, worksite, max_occup, ref_day)
+
+    # # Ajout de différentes tâches
+    dict_roulements =['roulement_reception', 'roulement_formation',
+                'roulement_depart', 'roulement_reception_depart',
+                'roulement_formation_depart']
+    level_compteur = 0
+    level_roulements = [0]
+    id_roulements = []
+    for r_key, roulement in tasks.items():
+        for a_key, agent in roulement.items():
+            for tache in agent:
+                (chantier, id_tache, str_train), start = tache
+                end = start + timedelta(minutes=durees[chantier][int(id_tache)-1])
+                liste_id = id_tache, r_key, a_key, chantier, str_train
+                add_human_task(fig, start, end, level_compteur, liste_id)
+            level_compteur+=1
+        level_roulements.append(level_compteur)
+        id_roulements.append(dict_roulements[int(r_key)])
+
+    # On ajoute une ligne entre chaque roulement
+    for level in level_roulements[0:]:
+        fig.add_trace(go.Scatter(
+            x=[ref_day.replace(hour=5, minute=0),
+                            ref_day.replace(hour=5, minute=0)+timedelta(days=1)],
+            y=[level, level],
+            mode='lines',  # Mode 'lines' pour tracer une ligne
+            line=dict(color='black', width=1, dash='dash')
+        ))
 
     # Personnalisation de la mise en page
-    liste_jours = [start+timedelta(days=i) for i in range(delta_days)]
-    days_of_week = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
-    months_in_year = ['Janvier', 'Février', 'Mars', 'Avril',  'Mai', 'Juin',
-                      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
-    dates_str = [f'{days_of_week[da.weekday()]} {da.day} {months_in_year[da.month-1]}'
-                 for da in liste_jours]
-
+    roulement_place = [(level_roulements[i+1]+level_roulements[i])/2 for i in range(len(level_roulements)-1)]
     fig.update_layout(
                       xaxis={
                             'title':{
@@ -91,42 +86,54 @@ def displays_track_occupation(start, end, filling_levels, occupations_max, nombr
                                     },
                             'tickformat':'%H:%M',
                             'tickfont':{'size':17}
-
                             },
                       yaxis={
                             'title':{
-                                'text':'Jour',
+                                'text':'Agents',
                                 'font': {'size': 20}
                                     },
-                            'tickvals':[i+.5 for i in list(range(delta_days))],
-                            'ticktext':dates_str, 
+                            'tickvals':roulement_place,
+                            'ticktext':id_roulements, 
                             'showgrid':False,
                             'tickangle':-45,
-                            'tickfont':{'size':17}
+                            'tickfont':{'size':17},
+                            'range':[ref_day.replace(hour=5, minute=0),
+                                     ref_day.replace(hour=5, minute=0)+timedelta(days=1)]
                             },
                       showlegend=False
                       )
+    months_in_year = ['Janvier', 'Février', 'Mars', 'Avril',  'Mai', 'Juin',
+                      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+
     fig.update_layout(
     title={
-        'text': 'Répartition des tâches machines pour chaque train',
+        'text': f'Tâches humaines pour le {ref_day.day} \
+{months_in_year[ref_day.month-1]} {ref_day.year}',
         'font': {'size': 25}  # Adjust font properties as needed
     }
 )
     fig.show()
 
 
-def display_human_tasks_1_day(dict_agents_on_day):
+
+def display_human_tasks(dict_agents_on_day, ref_day):
     """ Creates plannings for human tasks and for each day """
-    dates = []
-    for r in dict_agents_on_day:
-        for a in r.items():
-            for _, date in a:
-                dates.append(date)     
-    print(dates)   
-        
-        
-        
-        
-        
-        # HACK
-        break
+    for id_day, day in dict_agents_on_day.items():
+        displays_human_tasks_1_day(id_day, day, ref_day)
+
+
+dic = {1:
+    {1: 
+        {1: [(('REC', '1', '02/05/2023'), datetime(2023, 5, 2, 13, 0)), (('REC', '1', '02/05/2023'),datetime(2023, 5, 2, 16, 0)),
+            (('REC', '3', '02/05/2023'), datetime(2023, 5, 2, 14, 0)), (('REC', '3', '02/05/2023'), datetime(2023, 5, 2, 17, 0)),
+            (('FOR', '1', '02/05/2023'), datetime(2023, 5, 2, 14, 30)), (('FOR', '1', '02/05/2023'), datetime(2023, 5, 2, 17, 30)),
+            (('FOR', '3', '02/05/2023'), datetime(2023, 5, 2, 20, 0)), (('FOR', '3', '02/05/2023'), datetime(2023, 5, 2, 19, 30)),
+            (('DEP', '4', '02/05/2023'), datetime(2023, 5, 2, 20, 40))],
+        7: [(('REC', '1', '02/05/2023'), datetime(2023, 5, 2, 13, 0)), (('REC', '2', '02/05/2023'), datetime(2023, 5, 2, 13, 16)),
+            (('REC', '2', '02/05/2023'), datetime(2023, 5, 2, 16, 15)), (('FOR', '1', '02/05/2023'), datetime(2023, 5, 2, 17, 15)),
+            (('FOR', '2', '02/05/2023'), datetime(2023, 5, 2, 17, 45)), (('DEP', '4', '02/05/2023'), datetime(2023, 5, 2, 20, 40))],
+        8: [(('REC', '2', '02/05/2023'), datetime(2023, 5, 2, 13, 15)), (('REC', '3', '02/05/2023'), datetime(2023, 5, 2, 14, 15)),
+            (('FOR', '2', '02/05/2023'), datetime(2023, 5, 2, 17, 30)), (('FOR', '2', '02/05/2023'), datetime(2023, 5, 2, 14, 46)),
+            (('FOR', '3', '02/05/2023'), datetime(2023, 5, 2, 20, 15)), (('DEP', '4', '02/05/2023'), datetime(2023, 5, 2, 20, 40))]}}}
+
+#display_human_tasks_1_day(dic,datetime(2023, 5, 2, 13, 0) )

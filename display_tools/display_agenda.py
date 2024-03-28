@@ -38,7 +38,12 @@ def add_task_to_agenda(fig, start_time, end_time, names, color, ref_day):
         start = ref_day.replace(hour=start_time.hour, minute=start_time.minute)
         # End
         end = ref_day.replace(hour=end_time.hour, minute=end_time.minute)
-
+        _h =  start.hour if start.hour!=0 else '00'
+        _m = start.minute if start.minute>=10 else f'0{start.minute}'
+        str_hour_min = f'{_h}h{_m}'
+        _h =  end.hour if end.hour!=0 else '00'
+        _m = end.minute if end.minute>=10 else f'0{end.minute}'
+        str_hour_max = f'{_h}h{_m}'
         train, task_name = names
         assert task_name in ('DEB', 'FOR', 'DEG'), f'Task was named {task_name}'
         possible_levels = ('DEB', 'FOR', 'DEG')
@@ -50,7 +55,9 @@ def add_task_to_agenda(fig, start_time, end_time, names, color, ref_day):
                 fill='toself',
                 mode='lines',
                 line={'color':color},
-                name=train))
+                text=f'{train}<br>Arrivée : {str_hour_min}<br>Départ : {str_hour_max}',
+                hoverinfo='text'
+                ))
         difference = end - start
         _x = start + difference / 2
         _y= delta_day+1/6
@@ -190,7 +197,7 @@ def import_arrival_from_model(fig, arrival_pandas, start_date, color_codes):
             x=[creneau_arrivee, creneau_arrivee],
             y=[delta_day, delta_day+1],
             mode="lines",
-            line={'color':color, 'width':2, 'dash':"dashdot"},
+            line=dict(color=color, width=2, dash="dashdot"),
             name=str_train,
             hoverinfo="name"  # Show the name when hovering over the line
 ))
@@ -216,7 +223,7 @@ def import_departures_from_model(fig, departures_pandas, start_date, color_codes
             x=[creneau_dep, creneau_dep],
             y=[delta_day, delta_day+1],
             mode="lines",
-            line={'color':color, 'width':2, 'dash':"solid"},
+            line=dict(color=color, width=2, dash="solid"),
             name=str_train,
             hoverinfo="name"  # Show the name when hovering over the line
         ))
@@ -231,9 +238,8 @@ def displays_machine_indisponibilities(fig, indisponibilities, start_date):
         machine, t_min, t_max = indispo
         date_min = date_code_to_date_time(horaires.entier_vers_triplet(int(t_min)))
         date_max = date_code_to_date_time(horaires.entier_vers_triplet(int(t_max)))
-        add_task_to_agenda(fig, date_min, date_max, ('Indisponibilité', machine),
-                           '#AAAAAA', start_date)
-
+        add_task_to_agenda(fig, date_min, date_max,
+                           ('Indisponibilité', machine), '#AAAAAA', start_date)
 
 def full_process(solved_variables, extrema, arrival_pandas, departures_pandas, indisponibilities):
     """ Displays the agenda with the whole data """
