@@ -18,8 +18,8 @@ class FretModelJal2(FretModel):
         super().__init__(_data)
         try:
             self.voies = _data[InstanceSheetNames.SHEET_CHANTIERS][ChantiersColumnNames.CHANTIER_CAPA_VOIES].copy(deep=True)
-            self.dict_max_depart_du_train_d_arrivee()
-            self.dict_min_arrivee_du_train_de_depart()
+            self.dict_max_dep_for_train_arr = donnees_trains.dict_max_depart_du_train_d_arrivee(_data)
+            self.dict_min_arr_for_train_dep = donnees_trains.dict_min_arrivee_du_train_de_depart(_data)
         except:
             self.voies = []
             self.dict_max_dep_for_train_arr = {}
@@ -75,24 +75,6 @@ class FretModelJal2(FretModel):
                 self.variables[f"CVT_WPY_DEP_{str(voie)}_{jour}_{numero}"] = self.model.addVar(
                     name = f"CVT_WPY_DEP_{str(voie)}_{jour}_{numero}",
                     vtype = GRB.BINARY)
-
-    def dict_max_depart_du_train_d_arrivee(self):
-        """Initialisation du dictionnaire dict_max_dep_for_train_arr"""
-        dict_max_dep_for_train_arr = {}
-        for index in tqdm(self.arrivees().index, desc="Dict MAX_DEP_TRAIN_ARR", colour="#0088ff") :
-            jour = self.arrivees()[ArriveesColumnNames.ARR_DATE][index]
-            numero = self.arrivees()[ArriveesColumnNames.ARR_TRAIN_NUMBER][index]
-            dict_max_dep_for_train_arr[index] = max(donnees_trains.composition_train_arrivee_creneau(self.data, (jour, numero)))
-        self.dict_max_dep_for_train_arr = dict_max_dep_for_train_arr
-
-    def dict_min_arrivee_du_train_de_depart(self):
-        """Initialisation du dictionnaire dict_min_arr_for_train_dep"""
-        dict_min_arr_for_train_dep = {}
-        for index in tqdm(self.departs().index, desc="Dict MIN_ARR_TRAIN_DEP", colour="#0088ff") :
-            jour = self.departs()[DepartsColumnNames.DEP_DATE][index]
-            numero = self.departs()[DepartsColumnNames.DEP_TRAIN_NUMBER][index]
-            dict_min_arr_for_train_dep[index] = min(donnees_trains.composition_train_depart_creneau(self.data, (jour, numero)))
-        self.dict_min_arr_for_train_dep = dict_min_arr_for_train_dep
 
     def linearise_min(self, elt_1, elt_2):
         """
