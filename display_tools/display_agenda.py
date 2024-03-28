@@ -55,7 +55,7 @@ def add_task_to_agenda(fig, start_time, end_time, names, color, ref_day):
                 fill='toself',
                 mode='lines',
                 line={'color':color},
-                text=f'{train}<br>Arrivée : {str_hour_min}<br>Départ : {str_hour_max}',
+                text=f'{train}<br>Début : {str_hour_min}<br>Fin : {str_hour_max}',
                 hoverinfo='text'
                 ))
         difference = end - start
