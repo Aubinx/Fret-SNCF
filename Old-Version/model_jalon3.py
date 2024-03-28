@@ -230,40 +230,40 @@ def add_constr_taches_humaines_simultanées():
                 horaire_fin_2 = horaire_debut_2 + DICT_TACHES[type_train_2+"_"+task_id_2]["Duree"]
                 # Preprocessing pour eviter des cas particuliers inutiles
                 if type_train_1 == type_train_2 == "ARR" and (
-                    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_1}_{train_number_1}"] < HORAIRES_ARRIVEES[f"{train_day_2}_{train_number_2}"]
-                    or DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_2}_{train_number_2}"] < HORAIRES_ARRIVEES[f"{train_day_1}_{train_number_1}"]
+                    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_1}_{train_number_1}"] <= HORAIRES_ARRIVEES[f"{train_day_2}_{train_number_2}"]
+                    or DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_2}_{train_number_2}"] <= HORAIRES_ARRIVEES[f"{train_day_1}_{train_number_1}"]
                 ):
                     continue
                 if type_train_1 == type_train_2 == "DEP" and (
-                    DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_1}_{train_number_1}"] > HORAIRES_DEPARTS[f"{train_day_2}_{train_number_2}"]
-                    or DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_2}_{train_number_2}"] > HORAIRES_DEPARTS[f"{train_day_1}_{train_number_1}"]
+                    DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_1}_{train_number_1}"] >= HORAIRES_DEPARTS[f"{train_day_2}_{train_number_2}"]
+                    or DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_2}_{train_number_2}"] >= HORAIRES_DEPARTS[f"{train_day_1}_{train_number_1}"]
                 ):
                     continue
                 if type_train_1 == "ARR" and type_train_2 == "DEP" and (
-                    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_1}_{train_number_1}"] < DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_2}_{train_number_2}"]
-                    or HORAIRES_DEPARTS[f"{train_day_2}_{train_number_2}"] < HORAIRES_ARRIVEES[f"{train_day_1}_{train_number_1}"]
+                    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_1}_{train_number_1}"] <= DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_2}_{train_number_2}"]
+                    or HORAIRES_DEPARTS[f"{train_day_2}_{train_number_2}"] <= HORAIRES_ARRIVEES[f"{train_day_1}_{train_number_1}"]
                 ):
                     continue
                 if type_train_1 == "DEP" and type_train_2 == "ARR" and (
-                    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_2}_{train_number_2}"] < DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_1}_{train_number_1}"]
-                    or HORAIRES_DEPARTS[f"{train_day_1}_{train_number_1}"] < HORAIRES_ARRIVEES[f"{train_day_2}_{train_number_2}"]
+                    DICT_MAX_DEPART_DU_TRAIN_D_ARRIVEE[f"{train_day_2}_{train_number_2}"] <= DICT_MIN_ARRIVEE_DU_TRAIN_DE_DEPART[f"{train_day_1}_{train_number_1}"]
+                    or HORAIRES_DEPARTS[f"{train_day_1}_{train_number_1}"] <= HORAIRES_ARRIVEES[f"{train_day_2}_{train_number_2}"]
                 ):
                     continue
                 # var binaire delta_arr2_dep1
                 delta1_name = f"delta_Db2-inf-Fn1_{var_name_1}_{var_name_2}"
                 VARIABLES[delta1_name] = MODEL.addVar(vtype=GRB.BINARY, name=delta1_name)
                 nb_var_secondaires_new += 1
-                CONTRAINTES["Constr1"+delta1_name] = MODEL.addConstr(MAJORANT * (1 - VARIABLES[delta1_name]) >= horaire_debut_2 - horaire_fin_1 + EPSILON,
+                CONTRAINTES["Constr1"+delta1_name] = MODEL.addConstr(MAJORANT * (1 - VARIABLES[delta1_name]) >= horaire_debut_2 - horaire_fin_1,
                                                                     name="Constr1_"+delta1_name)
-                CONTRAINTES["Constr2"+delta1_name] = MODEL.addConstr(- MAJORANT * VARIABLES[delta1_name] <= horaire_debut_2 - horaire_fin_1 + EPSILON,
+                CONTRAINTES["Constr2"+delta1_name] = MODEL.addConstr(- MAJORANT * VARIABLES[delta1_name] <= horaire_debut_2 - horaire_fin_1,
                                                                     name="Constr2_"+delta1_name)
                 # var binaire delta_arr1_dep2
                 delta2_name = f"delta_Fn2-inf-Db1_{var_name_1}_{var_name_2}"
                 VARIABLES[delta2_name] = MODEL.addVar(vtype=GRB.BINARY, name=delta2_name)
                 nb_var_secondaires_new += 1
-                CONTRAINTES["Constr1"+delta2_name] = MODEL.addConstr(MAJORANT * (1 - VARIABLES[delta2_name]) >= horaire_fin_2 - horaire_debut_1 + EPSILON,
+                CONTRAINTES["Constr1"+delta2_name] = MODEL.addConstr(MAJORANT * (1 - VARIABLES[delta2_name]) >= horaire_fin_2 - horaire_debut_1,
                                                                     name="Constr1"+delta2_name)
-                CONTRAINTES["Constr2"+delta2_name] = MODEL.addConstr(- MAJORANT * VARIABLES[delta2_name] <= horaire_fin_2 - horaire_debut_1 + EPSILON,
+                CONTRAINTES["Constr2"+delta2_name] = MODEL.addConstr(- MAJORANT * VARIABLES[delta2_name] <= horaire_fin_2 - horaire_debut_1,
                                                                     name="Constr2"+delta2_name)
                 # Contrainte tâches agent simultanées
                 cstr_name = f"Constr_TacheAgentSimult_{var_name_1}_{var_name_2}"
