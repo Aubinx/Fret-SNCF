@@ -97,7 +97,7 @@ def date_code_to_datetime(date_code, ref_day):
     return ref_day.replace(hour=hour, minute=minute) + timedelta(days=day-1)
 
 
-def full_process_human_tasks(solved_variables, ref_day):
+def full_process_human_tasks(solved_variables, ref_day, is_it_mini=False):
     """ Executes the full computation of human tasks on one 3x8 work day """
     day, month, year = ref_day.split('/')
     ref_day = datetime(int(year), int(month), int(day))
@@ -112,15 +112,32 @@ def full_process_human_tasks(solved_variables, ref_day):
             tache = (tache,
                      date_code_to_datetime(
                          solved_variables[f'H_roul{variable_name[9:]}'].x, ref_day))
+
+            # Recherche du cycle de l'agent
+            creneau = -1
+            for i in range(3):
+                cycle = f"Cr_roul{_r}_jour{str(_j)}_ag{str(_a)}_cy{i}"
+                if cycle in solved_variables and solved_variables[cycle].x ==1:
+                    creneau = i
+ 
+            # Vérifie si cet agent travaille en 3x8
+            cycle = f"Cr_roul{_r}_jour{str(_j)}_ag{str(_a)}_cy{2}"
+            if cycle not in solved_variables:
+                agent3x8 = False
+            else:
+                agent3x8 = True
+
+            assert creneau != -1, 'Cycle non trouvé pour cet agent'
+            creneau = (creneau, agent3x8)
             if _j not in distinct_agents:
-                distinct_agents[_j]={_r:{_a:[tache]}}
+                distinct_agents[_j]={_r:{_a:[creneau,[tache]]}}
             else:
                 if _r not in distinct_agents[_j]:
-                    distinct_agents[_j][_r]={_a:[tache]}
+                    distinct_agents[_j][_r]={_a:[creneau,[tache]]}
                 else:
                     if _a not in distinct_agents[_j][_r]:
-                        distinct_agents[_j][_r][_a] = [tache]
+                        distinct_agents[_j][_r][_a] = [creneau,[tache]]
                     else:
-                        distinct_agents[_j][_r][_a].append(tache)
-
-    display_human_tasks(distinct_agents, ref_day)
+                        distinct_agents[_j][_r][_a][1].append(tache)
+    print(distinct_agents)
+    display_human_tasks(distinct_agents, ref_day, is_it_mini)
