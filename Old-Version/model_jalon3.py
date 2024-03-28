@@ -412,6 +412,7 @@ if __name__=='__main__':
                                 ARRIVEES, DEPARTS, indispo)
         dis_tracks.full_process_stats((earliest_arrival, latest_departure), VARIABLES,
                                     ARRIVEES, DEPARTS, NB_VOIES)
+        dis_tracks.full_process_human_tasks(VARIABLES, earliest_arrival)
         print("~ Affichage du résultat : ", time.time() - opti_finished_time)
         print("## Valeur de l'objectif : ", MODEL.ObjVal)
         print("Nombre de variables de décision ajoutées au modèle : ", nb_variables_new)
