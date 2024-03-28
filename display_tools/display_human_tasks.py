@@ -3,10 +3,18 @@
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 
+def darker_color_tool(color, factor=.6):
+    """ Darkens a color with a factor"""
+    _r, _g, _b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+    # Assombrir les composantes RGB
+    r_assombri = int(_r * factor)
+    g_assombri = int(_g * factor)
+    b_assombri = int(_b * factor)
+    return f"#{r_assombri:02x}{g_assombri:02x}{b_assombri:02x}"
+
 def add_human_task(figure, start, end, level, liste_id):
     """ Dispalys a rectangle for the human task """
     id_task, id_roulement, id_agent, id_chantier, str_train = liste_id
-    couleur = {'REC':'blue', 'FOR':'red', 'DEP':'green'}[id_chantier]
     _h =  start.hour if start.hour!=0 else '00'
     _m = start.minute if start.minute>=10 else f'0{start.minute}'
     str_hour_min = f'{_h}h{_m}'
@@ -22,6 +30,10 @@ def add_human_task(figure, start, end, level, liste_id):
     str_roulement =['roulement_reception', 'roulement_formation',
                 'roulement_depart', 'roulement_reception_depart',
                 'roulement_formation_depart'][int(id_roulement)]
+    couleur = {'REC':'#0000FF', 'FOR':'#FF0000', 'DEP':'#13cf13'}[id_chantier]
+    if str_tache in  ('appui voie + mise en place câle', 'dégarage / bouger de rame', 'débranchement'):
+        couleur  = darker_color_tool(couleur, .6)
+
     figure.add_trace(go.Scatter(
                 x=[start, end, end, start, start],
                 y=[level, level, level+1, level+1, level],
@@ -35,6 +47,21 @@ def add_human_task(figure, start, end, level, liste_id):
                 hoverinfo='text'# Display custom text on hover
                         )
                       )
+    # Affichage des tâches humaines // tâches machine
+    taches_machine = {'appui voie + mise en place câle':'FOR',
+                      'dégarage / bouger de rame':'DEG',
+                      'débranchement':"DEB"}
+    if str_tache in taches_machine:
+        nom_tache = taches_machine[str_tache]
+        couleur = darker_color_tool(couleur, .6)
+        difference = end - start
+        _x = start + difference / 2
+        figure.add_annotation(
+            x=_x, y=level+.5, text=nom_tache, showarrow=False,
+            xanchor='center', xshift=0, yanchor='middle',
+            font={'color':couleur}
+                           )
+
 
 def displays_human_tasks_1_day(id_day, tasks, ref_day):
     """ Generates the Plotly Fig and displays an agenda """
@@ -136,4 +163,5 @@ dic = {1:
             (('FOR', '2', '02/05/2023'), datetime(2023, 5, 2, 17, 30)), (('FOR', '2', '02/05/2023'), datetime(2023, 5, 2, 14, 46)),
             (('FOR', '3', '02/05/2023'), datetime(2023, 5, 2, 20, 15)), (('DEP', '4', '02/05/2023'), datetime(2023, 5, 2, 20, 40))]}}}
 
-#display_human_tasks_1_day(dic,datetime(2023, 5, 2, 13, 0) )
+if __name__=='__main__':
+    display_human_tasks(dic,datetime(2023, 5, 2, 13, 0) )

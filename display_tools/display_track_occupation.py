@@ -109,7 +109,7 @@ def displays_track_occupation(start, end, filling_levels, occupations_max, nombr
                       )
     fig.update_layout(
     title={
-        'text': 'Répartition des tâches machines pour chaque train',
+        'text': 'Occupation des voies sur les 3 chantiers',
         'font': {'size': 25}  # Adjust font properties as needed
     }
 )
