@@ -250,16 +250,16 @@ class FretModelJal3(FretModelJal2):
                     # var binaire delta_arr2_dep1
                     delta1_name = f"delta_Db2-inf-Fn1_{var_name_1}_{var_name_2}"
                     self.variables[delta1_name] = self.model.addVar(vtype=GRB.BINARY, name=delta1_name)
-                    self.contraintes["Constr1"+delta1_name] = self.model.addConstr(self.MAJORANT * (1 - self.variables[delta1_name]) >= horaire_debut_2 - horaire_fin_1 + self.EPSILON,
+                    self.contraintes["Constr1"+delta1_name] = self.model.addConstr(self.MAJORANT * (1 - self.variables[delta1_name]) >= horaire_debut_2 - horaire_fin_1,
                                                                         name="Constr1_"+delta1_name)
-                    self.contraintes["Constr2"+delta1_name] = self.model.addConstr(- self.MAJORANT * self.variables[delta1_name] <= horaire_debut_2 - horaire_fin_1 + self.EPSILON,
+                    self.contraintes["Constr2"+delta1_name] = self.model.addConstr(- self.MAJORANT * self.variables[delta1_name] <= horaire_debut_2 - horaire_fin_1,
                                                                         name="Constr2_"+delta1_name)
                     # var binaire delta_arr1_dep2
                     delta2_name = f"delta_Fn2-inf-Db1_{var_name_1}_{var_name_2}"
                     self.variables[delta2_name] = self.model.addVar(vtype=GRB.BINARY, name=delta2_name)
-                    self.contraintes["Constr1"+delta2_name] = self.model.addConstr(self.MAJORANT * (1 - self.variables[delta2_name]) >= horaire_fin_2 - horaire_debut_1 + self.EPSILON,
+                    self.contraintes["Constr1"+delta2_name] = self.model.addConstr(self.MAJORANT * (1 - self.variables[delta2_name]) >= horaire_fin_2 - horaire_debut_1,
                                                                         name="Constr1"+delta2_name)
-                    self.contraintes["Constr2"+delta2_name] = self.model.addConstr(- self.MAJORANT * self.variables[delta2_name] <= horaire_fin_2 - horaire_debut_1 + self.EPSILON,
+                    self.contraintes["Constr2"+delta2_name] = self.model.addConstr(- self.MAJORANT * self.variables[delta2_name] <= horaire_fin_2 - horaire_debut_1,
                                                                         name="Constr2"+delta2_name)
                     # Contrainte tâches agent simultanées
                     cstr_name = f"Constr_TacheAgentSimult_{var_name_1}_{var_name_2}"
