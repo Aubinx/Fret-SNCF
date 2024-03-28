@@ -139,5 +139,4 @@ def full_process_human_tasks(solved_variables, ref_day, is_it_mini=False):
                         distinct_agents[_j][_r][_a] = [creneau,[tache]]
                     else:
                         distinct_agents[_j][_r][_a][1].append(tache)
-    print(distinct_agents)
     display_human_tasks(distinct_agents, ref_day, is_it_mini)
