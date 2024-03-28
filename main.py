@@ -33,7 +33,7 @@ def create_data_dict() -> dict:
     return data_dict
 
 
-JALON = 1
+JALON = 3
 DATA_DICT = create_data_dict()
 if JALON == 1:
     FRET_MODEL = FretModel(DATA_DICT)
@@ -69,5 +69,7 @@ if __name__ == "__main__":
     if JALON >= 2:
         dis_tracks.full_process_stats((earliest_arrival, latest_departure), FRET_MODEL.variables,
                                       FRET_MODEL.arrivees(), FRET_MODEL.departs(), FRET_MODEL.voies)
+    if JALON >= 3:
+        dis_tracks.full_process_human_tasks(FRET_MODEL.variables, earliest_arrival)
     print("~ Affichage du résultat : ", time.time() - opti_finished_time)
     print("## Valeur de l'objectif : ", FRET_MODEL.model.ObjVal)
